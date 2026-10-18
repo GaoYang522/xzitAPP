@@ -23,4 +23,5 @@ pnpm-debug.log*
 coverage/
 .cache/
 .temp/
-.tmp/.merkle-snapshot.json
+.tmp/
+.merkle-snapshot.json
