@@ -369,14 +369,19 @@ export function parseScheduleFromTextItems(items, pageWidth, pageHeight, options
 // 从多页文字项提取时间段映射：跨页收集时间对（按页码+x顺序），按顺序对应节次1-14
 // 返回数组 times[1..14] = { start, end } 或 null
 export function extractSectionTimes(pagesItems) {
-  const allPairs = []
-  for (const items of pagesItems) {
+  const allTimeItems = []
+  for (let p = 0; p < pagesItems.length; p++) {
+    const items = pagesItems[p]
     const timeItems = items
       .filter((it) => /^\d{1,2}:\d{2}$/.test(it.str.trim()))
       .sort((a, b) => a.x - b.x)
-    for (let i = 0; i + 1 < timeItems.length; i += 2) {
-      allPairs.push({ start: timeItems[i].str.trim(), end: timeItems[i + 1].str.trim() })
+    for (const ti of timeItems) {
+      allTimeItems.push({ str: ti.str.trim(), page: p, x: ti.x })
     }
+  }
+  const allPairs = []
+  for (let i = 0; i + 1 < allTimeItems.length; i += 2) {
+    allPairs.push({ start: allTimeItems[i].str, end: allTimeItems[i + 1].str })
   }
   const times = [null]
   for (let n = 1; n <= 14; n++) {
