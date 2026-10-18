@@ -94,6 +94,43 @@ describe('CourseManager 课表管理', () => {
     expect(wrapper.text()).toContain('自习')
     expect(wrapper.text()).not.toContain('👤')
   })
+
+  test('显示周切换按钮‹›', () => {
+    setSemester()
+    const store = useStudyStore()
+    store.addCourse({ name: '高数', day: 1, startSection: 1, endSection: 2, location: '教1', startWeek: 1, endWeek: 16, color: 'blue' })
+    const wrapper = mount(CourseManager)
+    expect(wrapper.find('button[aria-label="上一周"]').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="下一周"]').exists()).toBe(true)
+  })
+
+  test('点击›切换到下一周，课程按周过滤', async () => {
+    setSemester()
+    const store = useStudyStore()
+    store.addCourse({ name: '课程A', day: 1, startSection: 1, endSection: 2, location: '教1', startWeek: 1, endWeek: 3, color: 'blue' })
+    store.addCourse({ name: '课程B', day: 1, startSection: 1, endSection: 2, location: '教2', startWeek: 5, endWeek: 10, color: 'purple' })
+    const wrapper = mount(CourseManager)
+    expect(wrapper.text()).toContain('课程A')
+    expect(wrapper.text()).not.toContain('课程B')
+    const nextBtn = wrapper.find('button[aria-label="下一周"]')
+    await nextBtn.trigger('click')
+    await nextBtn.trigger('click')
+    expect(wrapper.text()).not.toContain('课程A')
+    expect(wrapper.text()).not.toContain('课程B')
+    await nextBtn.trigger('click')
+    expect(wrapper.text()).not.toContain('课程A')
+    expect(wrapper.text()).toContain('课程B')
+  })
+
+  test('第1周时‹按钮禁用', async () => {
+    setSemester()
+    const store = useStudyStore()
+    store.addCourse({ name: '高数', day: 1, startSection: 1, endSection: 2, location: '教1', startWeek: 1, endWeek: 16, color: 'blue' })
+    const wrapper = mount(CourseManager)
+    const prevBtn = wrapper.find('button[aria-label="上一周"]')
+    for (let i = 0; i < 10; i++) await prevBtn.trigger('click')
+    expect(prevBtn.attributes('disabled')).toBeDefined()
+  })
 })
 
 describe('HomeworkManager 作业管理', () => {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useStudyStore } from '../../stores/study'
 import { useSettingsStore } from '../../stores/settings'
 import { getCurrentWeek, isCourseInWeek } from '../../composables/useWeek'
@@ -13,6 +13,10 @@ const study = useStudyStore()
 const settings = useSettingsStore()
 
 const currentWeek = computed(() => getCurrentWeek(settings.semesterStart, settings.totalWeeks))
+const viewWeek = ref(currentWeek.value || 1)
+watch(currentWeek, (nw) => { if (nw) viewWeek.value = nw })
+function prevWeek() { if (viewWeek.value > 1) viewWeek.value-- }
+function nextWeek() { if (viewWeek.value < settings.totalWeeks) viewWeek.value++ }
 const showForm = ref(false)
 const editingId = ref(null)
 const form = ref({
@@ -84,7 +88,7 @@ function save() {
 }
 function getCourseAt(day, section) {
   return study.courses.find(
-    (c) => c.day === day && section >= c.startSection && section <= c.endSection && isCourseInWeek(c, currentWeek.value)
+    (c) => c.day === day && section >= c.startSection && section <= c.endSection && isCourseInWeek(c, viewWeek.value)
   )
 }
 </script>
@@ -94,9 +98,23 @@ function getCourseAt(day, section) {
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
         <h2 class="text-lg font-bold text-gray-800 dark:text-white">📚 课表管理</h2>
-        <span v-if="currentWeek" class="px-3 py-1 rounded-full bg-grad-blue text-white text-sm font-medium">
-          第 {{ currentWeek }} 周
-        </span>
+        <div v-if="currentWeek" class="flex items-center gap-1">
+          <button
+            @click="prevWeek"
+            :disabled="viewWeek <= 1"
+            class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            aria-label="上一周"
+          >‹</button>
+          <span class="px-3 py-1 rounded-full bg-grad-blue text-white text-sm font-medium whitespace-nowrap">
+            第 {{ viewWeek }} 周<span v-if="viewWeek === currentWeek" class="opacity-80 ml-1">·本周</span>
+          </span>
+          <button
+            @click="nextWeek"
+            :disabled="viewWeek >= settings.totalWeeks"
+            class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            aria-label="下一周"
+          >›</button>
+        </div>
         <span v-else class="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-500 text-sm">
           未设置学期
         </span>
