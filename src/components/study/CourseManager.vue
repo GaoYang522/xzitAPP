@@ -4,6 +4,7 @@ import { useStudyStore } from '../../stores/study'
 import { useSettingsStore } from '../../stores/settings'
 import { getCurrentWeek, isCourseInWeek } from '../../composables/useWeek'
 import { parsePdfSchedule } from '../../utils/pdfScheduleParser'
+import { getSectionTime } from '../../utils/sectionTime'
 import Btn from '../common/Btn.vue'
 import Modal from '../common/Modal.vue'
 import EmptyState from '../common/EmptyState.vue'
@@ -128,7 +129,8 @@ function getCourseAt(day, section) {
       <table class="w-full border-collapse min-w-[700px]">
         <thead>
           <tr>
-            <th class="p-2 text-xs text-gray-400 w-16">节次</th>
+            <th class="p-2 text-xs text-gray-400 w-20">时间</th>
+            <th class="p-2 text-xs text-gray-400 w-12">节次</th>
             <th v-for="(day, i) in weekdays" :key="i" class="p-2 text-sm font-medium text-gray-600 dark:text-gray-300">
               {{ day }}
             </th>
@@ -136,6 +138,7 @@ function getCourseAt(day, section) {
         </thead>
         <tbody>
           <tr v-for="section in 14" :key="section">
+            <td class="p-1 text-center text-xs text-gray-400 whitespace-nowrap">{{ getSectionTime(section) }}</td>
             <td class="p-2 text-center text-xs text-gray-400">{{ section }}</td>
             <td v-for="day in 7" :key="day" class="p-1 border border-gray-100 dark:border-gray-700 align-top">
               <div v-if="getCourseAt(day, section)" :class="['rounded-lg p-2 text-xs cursor-pointer break-all', colorMap[getCourseAt(day, section).color]]" @click="openEdit(getCourseAt(day, section))">

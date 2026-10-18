@@ -67,6 +67,16 @@ describe('CourseManager 课表管理', () => {
     expect(wrapper.text()).toContain('大学生心理健康教育')
     expect(wrapper.text()).toContain('未排地点')
   })
+
+  test('课表最左侧显示时间段列', () => {
+    setSemester()
+    const store = useStudyStore()
+    store.addCourse({ name: '高数', day: 1, startSection: 1, endSection: 2, location: '教1', startWeek: 1, endWeek: 16, color: 'blue' })
+    const wrapper = mount(CourseManager)
+    expect(wrapper.text()).toContain('时间')
+    expect(wrapper.text()).toContain('08:00-08:45')
+    expect(wrapper.text()).toContain('14:00-14:45')
+  })
 })
 
 describe('HomeworkManager 作业管理', () => {
