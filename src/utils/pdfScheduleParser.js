@@ -165,6 +165,8 @@ export function isTimeOrHeader(str) {
   if (/^学号/.test(t) || /课表/.test(t) || /学期/.test(t)) return true
   if (/打印时间/.test(t)) return true
   if (/理论.*实践/.test(t) || /^[:：]$/.test(t)) return true
+  if (/^实践课程/.test(t) || /^其他课程/.test(t)) return true
+
   return false
 }
 
@@ -306,6 +308,7 @@ export function parseScheduleFromTextItems(items, pageWidth, pageHeight, options
       return (
         coord >= dayBounds[day].min &&
         coord <= dayBounds[day].max &&
+        it.y >= 0 && it.y <= pageHeight &&
         !DAY_PATTERNS.some(([re]) => re.test(it.str)) &&
         !SECTION_PATTERN.test(it.str) &&
         !isTimeOrHeader(it.str) &&

@@ -122,6 +122,8 @@ describe('pdfScheduleParser', () => {
     test('非表头返回false', () => expect(isTimeOrHeader('高等数学')).toBe(false))
     test('冒号开头的教师名不是表头', () => expect(isTimeOrHeader(':赵文婧')).toBe(false))
     test('纯冒号是表头', () => expect(isTimeOrHeader(':')).toBe(true))
+    test('实践课程说明是表头', () => expect(isTimeOrHeader('实践课程：电子工艺实习张艳华(共1周)/第17周;')).toBe(true))
+    test('其他课程说明是表头', () => expect(isTimeOrHeader('其他课程：中国近现代史纲要张翔兮(共4周)/1-4周/无;')).toBe(true))
   })
 
   describe('parseWeeks', () => {
@@ -365,6 +367,23 @@ describe('pdfScheduleParser', () => {
       const result = extractSectionTimes([[]])
       expect(result[1]).toBeNull()
       expect(result[14]).toBeNull()
+    })
+  })
+
+  describe('页面外内容过滤', () => {
+    test('y为负的课程文字不被解析（横向课表）', () => {
+      const raw = [
+        makeRawItem('星期一', 74, 133), makeRawItem('星期二', 74, 237),
+        makeRawItem('1', 89, 79), makeRawItem('2', 139, 79),
+        makeRawItem('正常课(1-2节)1-16周/场地:教1/教师:张三', 100, 133),
+        makeRawItem('溢出课(1-2节)1-16周/场地:教2/教师:李四', 100, 680),
+      ]
+      const items = normalizeItems(raw, 595)
+      const courses = parseScheduleFromTextItems(items, 842, 595)
+      const normal = courses.find((c) => c.name === '正常课')
+      const overflow = courses.find((c) => c.name === '溢出课')
+      expect(normal).toBeTruthy()
+      expect(overflow).toBeUndefined()
     })
   })
 })
