@@ -76,14 +76,14 @@ export function detectDayBounds(items, pageWidth, pageHeight, orientation) {
   return result
 }
 
-// 查找节次标签：先匹配"第N节"，再匹配纯数字1-12
+// 查找节次标签：先匹配"第N节"，再匹配纯数字1-14
 export function findSectionLabels(items) {
   const patternLabels = []
   for (const it of items) {
     const m = it.str.match(SECTION_PATTERN)
     if (m) {
       const n = parseInt(m[1], 10)
-      if (n >= 1 && n <= 12) patternLabels.push({ n, x: it.x, y: it.y })
+      if (n >= 1 && n <= 14) patternLabels.push({ n, x: it.x, y: it.y })
     }
   }
   if (patternLabels.length >= 2) return patternLabels
@@ -92,7 +92,7 @@ export function findSectionLabels(items) {
   for (const it of items) {
     const trimmed = it.str.trim()
     const n = parseInt(trimmed, 10)
-    if (trimmed === String(n) && n >= 1 && n <= 12) {
+    if (trimmed === String(n) && n >= 1 && n <= 14) {
       numItems.push({ n, x: it.x, y: it.y })
     }
   }
@@ -114,7 +114,8 @@ export function findSectionLabels(items) {
   return groups[0] || []
 }
 
-// 检测节次边界：返回长度为 13 的数组，index 1-12，每个为 { min, max, center }
+// 检测节次边界：返回长度为 15 的数组，index 1-14，每个为 { min, max, center }
+// 找到的标签用精确边界，缺失的用平均间距外推
 export function detectSectionBounds(items, pageWidth, pageHeight, orientation) {
   const labels = findSectionLabels(items)
   const found = {}
@@ -123,27 +124,34 @@ export function detectSectionBounds(items, pageWidth, pageHeight, orientation) {
       found[label.n] = orientation === 'vertical' ? label.y : label.x
     }
   }
-  const nums = []
-  for (let n = 1; n <= 12; n++) nums.push(n)
-  const allFound = nums.every((n) => found[n] !== undefined)
   const maxRange = orientation === 'vertical' ? pageHeight : pageWidth
+  const foundNums = Object.keys(found).map(Number).sort((a, b) => a - b)
 
-  if (!allFound) {
-    const step = maxRange / 13
-    const result = [null]
-    for (let n = 1; n <= 12; n++) {
+  const result = [null]
+  if (foundNums.length < 2) {
+    const step = maxRange / 15
+    for (let n = 1; n <= 14; n++) {
       result[n] = { center: step * n, min: step * (n - 0.5), max: step * (n + 0.5) }
     }
     return result
   }
 
-  const coords = nums.map((n) => found[n])
-  const increasing = coords[11] > coords[0]
-  const result = [null]
-  for (let i = 0; i < 12; i++) {
-    const edge1 = i === 0 ? (increasing ? 0 : maxRange) : (coords[i - 1] + coords[i]) / 2
-    const edge2 = i === 11 ? (increasing ? maxRange : 0) : (coords[i + 1] + coords[i]) / 2
-    result[nums[i]] = { center: coords[i], min: Math.min(edge1, edge2), max: Math.max(edge1, edge2) }
+  let totalGap = 0
+  for (let i = 1; i < foundNums.length; i++) totalGap += Math.abs(found[foundNums[i]] - found[foundNums[i - 1]])
+  const avgGap = totalGap / (foundNums.length - 1)
+  const minF = foundNums[0]
+  const maxF = foundNums[foundNums.length - 1]
+  const inc = found[maxF] > found[minF]
+
+  const coords = {}
+  for (const n of foundNums) coords[n] = found[n]
+  for (let n = minF - 1; n >= 1; n--) coords[n] = coords[n + 1] - (inc ? avgGap : -avgGap)
+  for (let n = maxF + 1; n <= 14; n++) coords[n] = coords[n - 1] + (inc ? avgGap : -avgGap)
+
+  for (let n = 1; n <= 14; n++) {
+    const edge1 = n === 1 ? (inc ? 0 : maxRange) : (coords[n - 1] + coords[n]) / 2
+    const edge2 = n === 14 ? (inc ? maxRange : 0) : (coords[n + 1] + coords[n]) / 2
+    result[n] = { center: coords[n], min: Math.min(edge1, edge2), max: Math.max(edge1, edge2) }
   }
   return result
 }
@@ -226,11 +234,13 @@ export function parseCellContent(lines) {
   let name = ''
   const sectionMatch = fullText.match(/\(\d+\s*[-—~]\s*\d+\s*节\)/)
   if (sectionMatch) {
+    if (sectionMatch.index === 0) return null
     name = fullText.substring(0, sectionMatch.index).trim()
   }
   if (!name) {
     const sectionMatch2 = fullText.match(/\d+\s*[-—~]\s*\d+\s*节/)
     if (sectionMatch2) {
+      if (sectionMatch2.index === 0) return null
       name = fullText.substring(0, sectionMatch2.index).trim()
     }
   }
@@ -278,10 +288,11 @@ export function groupLines(cellItems, tolerance = 5) {
 }
 
 // 主解析函数：从规范化文字项数组解析出课表课程数组
-export function parseScheduleFromTextItems(items, pageWidth, pageHeight) {
-  const orientation = detectOrientation(items)
-  const dayBounds = detectDayBounds(items, pageWidth, pageHeight, orientation)
-  const sectionBounds = detectSectionBounds(items, pageWidth, pageHeight, orientation)
+// options 可选预设 { orientation, dayBounds, sectionBounds }，用于多页复用第 1 页边界
+export function parseScheduleFromTextItems(items, pageWidth, pageHeight, options = {}) {
+  const orientation = options.orientation || detectOrientation(items)
+  const dayBounds = options.dayBounds || detectDayBounds(items, pageWidth, pageHeight, orientation)
+  const sectionBounds = options.sectionBounds || detectSectionBounds(items, pageWidth, pageHeight, orientation)
 
   const sectionWidth = Math.abs(sectionBounds[2].center - sectionBounds[1].center)
   const gapThreshold = sectionWidth * 0.45
@@ -328,7 +339,7 @@ export function parseScheduleFromTextItems(items, pageWidth, pageHeight) {
           const coords = xBlock.map((it) => it[coordKey])
           const cMin = Math.min(...coords)
           const cMax = Math.max(...coords)
-          for (let s = 1; s <= 12; s++) {
+          for (let s = 1; s <= 14; s++) {
             if (cMin >= sectionBounds[s].min && cMin <= sectionBounds[s].max) startSec = startSec || s
             if (cMax >= sectionBounds[s].min && cMax <= sectionBounds[s].max) endSec = endSec || s
           }
@@ -364,13 +375,23 @@ export async function parsePdfSchedule(file) {
   })
   const pdf = await loadingTask.promise
 
-  const allCourses = []
+  const pagesData = []
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i)
     const viewport = page.getViewport({ scale: 1 })
     const textContent = await page.getTextContent()
     const items = normalizeItems(textContent.items, viewport.height)
-    const courses = parseScheduleFromTextItems(items, viewport.width, viewport.height)
+    pagesData.push({ items, width: viewport.width, height: viewport.height })
+  }
+
+  const first = pagesData[0]
+  const orientation = detectOrientation(first.items)
+  const dayBounds = detectDayBounds(first.items, first.width, first.height, orientation)
+  const sectionBounds = detectSectionBounds(first.items, first.width, first.height, orientation)
+
+  const allCourses = []
+  for (const { items, width, height } of pagesData) {
+    const courses = parseScheduleFromTextItems(items, width, height, { orientation, dayBounds, sectionBounds })
     allCourses.push(...courses)
   }
   await pdf.cleanup()

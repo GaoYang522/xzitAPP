@@ -277,4 +277,62 @@ describe('pdfScheduleParser', () => {
       expect(linear.endSection).toBe(2)
     })
   })
+
+  describe('多页解析与节次13-14支持', () => {
+    test('findSectionLabels 支持纯数字13、14', () => {
+      const raw = [
+        makeRawItem('13', 56, 520), makeRawItem('14', 95, 520),
+      ]
+      const items = normalizeItems(raw, 600)
+      const labels = findSectionLabels(items)
+      const nums = labels.map((l) => l.n).sort((a, b) => a - b)
+      expect(nums).toContain(13)
+      expect(nums).toContain(14)
+    })
+
+    test('detectSectionBounds 返回15个元素（index 0 为 null，1-14 有值）', () => {
+      const raw = []
+      for (let n = 1; n <= 12; n++) raw.push(makeRawItem(String(n), 50 + n * 50, 520))
+      const items = normalizeItems(raw, 600)
+      const bounds = detectSectionBounds(items, 800, 600, 'horizontal')
+      expect(bounds.length).toBe(15)
+      expect(bounds[0]).toBeNull()
+      for (let n = 1; n <= 14; n++) {
+        expect(bounds[n]).toBeTruthy()
+        expect(bounds[n].center).toBeDefined()
+      }
+    })
+
+    test('detectSectionBounds 部分标签时1-12精确、13-14外推', () => {
+      const raw = []
+      for (let n = 1; n <= 12; n++) raw.push(makeRawItem(String(n), 50 + n * 50, 520))
+      const items = normalizeItems(raw, 600)
+      const bounds = detectSectionBounds(items, 800, 600, 'horizontal')
+      expect(bounds[12].center).toBeCloseTo(50 + 12 * 50, 0)
+      expect(bounds[13].center).toBeGreaterThan(bounds[12].center)
+      expect(bounds[14].center).toBeGreaterThan(bounds[13].center)
+    })
+
+    test('parseScheduleFromTextItems 接受预设边界 options', () => {
+      const raw = [
+        makeRawItem('星期一', 50, 460), makeRawItem('星期二', 50, 360),
+        makeRawItem('1', 89, 520), makeRawItem('2', 139, 520),
+        makeRawItem('晚课(13-14节)1-16周/场地:教1/教师:张三', 100, 460),
+      ]
+      const items = normalizeItems(raw, 600)
+      const orientation = 'horizontal'
+      const dayBounds = detectDayBounds(items, 800, 600, orientation)
+      const sectionBounds = detectSectionBounds(items, 800, 600, orientation)
+      const courses = parseScheduleFromTextItems(items, 800, 600, { orientation, dayBounds, sectionBounds })
+      const late = courses.find((c) => c.name === '晚课')
+      expect(late).toBeTruthy()
+      expect(late.startSection).toBe(13)
+      expect(late.endSection).toBe(14)
+    })
+
+    test('parseCellContent 节次信息在开头时返回null', () => {
+      expect(parseCellContent(['(12-13节)15周/场地:教1'])).toBeNull()
+      expect(parseCellContent(['12-14节9-14周/场地:教1'])).toBeNull()
+    })
+  })
 })
