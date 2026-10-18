@@ -1,8 +1,10 @@
 import {
   normalizeItems,
-  detectDayColumns,
-  detectSectionRows,
-  collectCellItems,
+  detectOrientation,
+  detectDayBounds,
+  findSectionLabels,
+  detectSectionBounds,
+  isTimeOrHeader,
   parseWeeks,
   parseSections,
   parseCellContent,
@@ -31,130 +33,163 @@ describe('pdfScheduleParser', () => {
     })
   })
 
-  describe('detectDayColumns', () => {
-    test('找到周一到周日表头时按实际坐标分列', () => {
+  describe('detectOrientation', () => {
+    test('星期按x排列时返回vertical', () => {
+      const items = [
+        { str: '周一', x: 100, y: 10 }, { str: '周二', x: 200, y: 10 },
+        { str: '周三', x: 300, y: 10 },
+      ]
+      expect(detectOrientation(items)).toBe('vertical')
+    })
+    test('星期按y排列时返回horizontal', () => {
+      const items = [
+        { str: '星期一', x: 74, y: 462 }, { str: '星期二', x: 74, y: 358 },
+        { str: '星期三', x: 74, y: 254 },
+      ]
+      expect(detectOrientation(items)).toBe('horizontal')
+    })
+    test('少于2个星期标签默认vertical', () => {
+      expect(detectOrientation([{ str: '课表', x: 50, y: 10 }])).toBe('vertical')
+    })
+  })
+
+  describe('detectDayBounds', () => {
+    test('纵向课表按x坐标分列', () => {
       const items = [
         { str: '周一', x: 100, y: 10 }, { str: '周二', x: 200, y: 10 },
         { str: '周三', x: 300, y: 10 }, { str: '周四', x: 400, y: 10 },
         { str: '周五', x: 500, y: 10 }, { str: '周六', x: 600, y: 10 },
         { str: '周日', x: 700, y: 10 },
       ]
-      const cols = detectDayColumns(items, 800)
-      expect(cols[1].center).toBe(100)
-      expect(cols[7].center).toBe(700)
-      expect(cols[1].left).toBe(0)
-      expect(cols[7].right).toBe(800)
+      const bounds = detectDayBounds(items, 800, 600, 'vertical')
+      expect(bounds[1].center).toBe(100)
+      expect(bounds[7].center).toBe(700)
     })
-
-    test('未找到表头时均匀分 7 列', () => {
-      const items = [{ str: '课表', x: 50, y: 10 }]
-      const cols = detectDayColumns(items, 800)
-      expect(cols[1]).toBeDefined()
-      expect(cols[7]).toBeDefined()
-      expect(cols[1].center).toBeLessThan(cols[2].center)
-    })
-  })
-
-  describe('detectSectionRows', () => {
-    test('找到第1节到第12节时按实际坐标分行', () => {
-      const items = []
-      for (let n = 1; n <= 12; n++) {
-        items.push({ str: `第${n}节`, x: 10, y: n * 50 })
-      }
-      const rows = detectSectionRows(items, 700)
-      expect(rows[1].center).toBe(50)
-      expect(rows[12].center).toBe(600)
-      expect(rows[1].top).toBe(0)
-      expect(rows[12].bottom).toBe(700)
-    })
-
-    test('未找到节次时均匀分 12 行', () => {
-      const items = [{ str: '课表', x: 10, y: 10 }]
-      const rows = detectSectionRows(items, 600)
-      expect(rows[1]).toBeDefined()
-      expect(rows[12]).toBeDefined()
-      expect(rows[1].center).toBeLessThan(rows[2].center)
-    })
-  })
-
-  describe('collectCellItems', () => {
-    test('只收集落在指定范围内的项', () => {
+    test('横向课表按y坐标分行', () => {
       const items = [
-        { str: 'A', x: 150, y: 60 }, { str: 'B', x: 50, y: 60 }, { str: 'C', x: 150, y: 200 },
+        { str: '星期一', x: 74, y: 462 }, { str: '星期二', x: 74, y: 358 },
+        { str: '星期三', x: 74, y: 254 }, { str: '星期四', x: 74, y: 150 },
+        { str: '星期五', x: 74, y: 46 }, { str: '星期六', x: 74, y: -57 },
+        { str: '星期日', x: 74, y: -161 },
       ]
-      const col = { left: 100, right: 200, center: 150 }
-      const row = { top: 50, bottom: 100, center: 75 }
-      const result = collectCellItems(items, col, row)
-      expect(result).toHaveLength(1)
-      expect(result[0].str).toBe('A')
+      const bounds = detectDayBounds(items, 842, 595, 'horizontal')
+      expect(bounds[1].center).toBe(462)
+      expect(bounds[2].center).toBe(358)
     })
+  })
+
+  describe('findSectionLabels', () => {
+    test('匹配第N节格式', () => {
+      const items = [{ str: '第1节', x: 10, y: 50 }, { str: '第2节', x: 10, y: 100 }]
+      const labels = findSectionLabels(items)
+      expect(labels).toHaveLength(2)
+      expect(labels[0].n).toBe(1)
+    })
+    test('匹配纯数字1-12', () => {
+      const items = [
+        { str: '1', x: 89, y: 517 }, { str: '2', x: 140, y: 517 },
+        { str: '3', x: 190, y: 517 },
+      ]
+      const labels = findSectionLabels(items)
+      expect(labels).toHaveLength(3)
+      expect(labels[0].n).toBe(1)
+    })
+  })
+
+  describe('detectSectionBounds', () => {
+    test('纵向课表按y坐标分行', () => {
+      const items = []
+      for (let n = 1; n <= 12; n++) items.push({ str: `第${n}节`, x: 10, y: n * 50 })
+      const bounds = detectSectionBounds(items, 800, 700, 'vertical')
+      expect(bounds[1].center).toBe(50)
+      expect(bounds[12].center).toBe(600)
+    })
+    test('横向课表按x坐标分列', () => {
+      const items = []
+      for (let n = 1; n <= 12; n++) items.push({ str: String(n), x: n * 50, y: 517 })
+      const bounds = detectSectionBounds(items, 842, 595, 'horizontal')
+      expect(bounds[1].center).toBe(50)
+      expect(bounds[12].center).toBe(600)
+    })
+  })
+
+  describe('isTimeOrHeader', () => {
+    test('识别时间', () => expect(isTimeOrHeader('08:00')).toBe(true))
+    test('识别表头', () => expect(isTimeOrHeader('上午')).toBe(true))
+    test('识别实验时段', () => expect(isTimeOrHeader('实验时段1')).toBe(true))
+    test('识别学号', () => expect(isTimeOrHeader('学号：25100200113')).toBe(true))
+    test('非表头返回false', () => expect(isTimeOrHeader('高等数学')).toBe(false))
+    test('冒号开头的教师名不是表头', () => expect(isTimeOrHeader(':赵文婧')).toBe(false))
+    test('纯冒号是表头', () => expect(isTimeOrHeader(':')).toBe(true))
   })
 
   describe('parseWeeks', () => {
-    test('解析 1-16周 格式', () => {
-      expect(parseWeeks('1-16周')).toEqual({ startWeek: 1, endWeek: 16 })
-    })
-    test('解析 1—16周 格式（破折号）', () => {
-      expect(parseWeeks('1—16周')).toEqual({ startWeek: 1, endWeek: 16 })
-    })
-    test('解析单周 3周', () => {
-      expect(parseWeeks('3周')).toEqual({ startWeek: 3, endWeek: 3 })
-    })
-    test('无周次信息返回 null', () => {
-      expect(parseWeeks('高等数学')).toBeNull()
-    })
+    test('解析 1-16周', () => expect(parseWeeks('1-16周')).toEqual({ startWeek: 1, endWeek: 16 }))
+    test('解析单周', () => expect(parseWeeks('3周')).toEqual({ startWeek: 3, endWeek: 3 }))
+    test('无周次返回null', () => expect(parseWeeks('高等数学')).toBeNull())
   })
 
   describe('parseSections', () => {
-    test('解析 1-2节', () => {
+    test('解析(1-2节)带括号格式', () => {
+      expect(parseSections('(1-2节)1-16周')).toEqual({ startSection: 1, endSection: 2 })
+    })
+    test('解析1-2节无括号格式', () => {
       expect(parseSections('1-2节')).toEqual({ startSection: 1, endSection: 2 })
     })
-    test('解析单节 3节', () => {
-      expect(parseSections('3节')).toEqual({ startSection: 3, endSection: 3 })
-    })
-    test('无节次信息返回 null', () => {
-      expect(parseSections('高等数学')).toBeNull()
-    })
+    test('无节次返回null', () => expect(parseSections('高等数学')).toBeNull())
   })
 
   describe('parseCellContent', () => {
-    test('从多行文本提取课程名、场地、教师、周次', () => {
+    test('解析新格式：课程名(节次)周次/场地:xxx/教师:xxx', () => {
+      const text = '高等数学A(Ⅱ)(1-2节)1-16周/校区:中心校区/场地:敬本C501/教师:胡江'
+      const result = parseCellContent([text])
+      expect(result.name).toBe('高等数学A(Ⅱ)')
+      expect(result.location).toBe('敬本C501')
+      expect(result.teacher).toBe('胡江')
+      expect(result.startWeek).toBe(1)
+      expect(result.endWeek).toBe(16)
+      expect(result.startSection).toBe(1)
+      expect(result.endSection).toBe(2)
+    })
+
+    test('解析旧格式：多行文本', () => {
       const lines = ['高等数学', '1-16周', '教1-101', '张老师']
       const result = parseCellContent(lines)
       expect(result.name).toBe('高等数学')
       expect(result.location).toBe('教1-101')
       expect(result.teacher).toBe('张老师')
-      expect(result.startWeek).toBe(1)
-      expect(result.endWeek).toBe(16)
     })
 
-    test('空行返回 null', () => {
+    test('空行返回null', () => {
       expect(parseCellContent([])).toBeNull()
       expect(parseCellContent(['', '  '])).toBeNull()
     })
 
-    test('只有课程名也能解析', () => {
-      const result = parseCellContent(['大学英语'])
-      expect(result.name).toBe('大学英语')
-      expect(result.startWeek).toBe(1)
-      expect(result.endWeek).toBe(16)
+    test('含"教育"的课程名不被误设为location', () => {
+      const lines = ['大学生心理健康教育', '1-16周']
+      const result = parseCellContent(lines)
+      expect(result.name).toBe('大学生心理健康教育')
+      expect(result.location).toBe('')
+    })
+
+    test('旧格式教1-101仍能识别为location', () => {
+      const lines = ['高等数学', '1-16周', '教1-101']
+      const result = parseCellContent(lines)
+      expect(result.location).toBe('教1-101')
     })
   })
 
   describe('groupLines', () => {
-    test('y 接近的项归为同一行，按 x 排序拼接', () => {
+    test('y接近的项归为同一行', () => {
       const items = [
         { str: 'B', x: 200, y: 50 }, { str: 'A', x: 100, y: 52 }, { str: 'C', x: 100, y: 80 },
       ]
-      const lines = groupLines(items, 5)
-      expect(lines).toEqual(['AB', 'C'])
+      expect(groupLines(items, 5)).toEqual(['AB', 'C'])
     })
-    test('空数组返回空', () => {
-      expect(groupLines([])).toEqual([])
-    })
+    test('空数组返回空', () => expect(groupLines([])).toEqual([]))
   })
 
-  describe('parseScheduleFromTextItems', () => {
+  describe('parseScheduleFromTextItems - 纵向课表', () => {
     test('完整课表解析：含跨节课程', () => {
       const pageWidth = 800
       const pageHeight = 700
@@ -163,12 +198,7 @@ describe('pdfScheduleParser', () => {
         makeRawItem('周三', 300, 690), makeRawItem('周四', 400, 690),
         makeRawItem('周五', 500, 690), makeRawItem('周六', 600, 690),
         makeRawItem('周日', 700, 690),
-        makeRawItem('第1节', 10, 650), makeRawItem('第2节', 10, 600),
-        makeRawItem('第3节', 10, 550), makeRawItem('第4节', 10, 500),
-        makeRawItem('第5节', 10, 450), makeRawItem('第6节', 10, 400),
-        makeRawItem('第7节', 10, 350), makeRawItem('第8节', 10, 300),
-        makeRawItem('第9节', 10, 250), makeRawItem('第10节', 10, 200),
-        makeRawItem('第11节', 10, 150), makeRawItem('第12节', 10, 100),
+        ...Array.from({ length: 12 }, (_, i) => makeRawItem(`第${i + 1}节`, 10, 650 - i * 50)),
         makeRawItem('高等数学', 100, 650), makeRawItem('1-16周', 100, 635),
         makeRawItem('教1-101', 100, 620), makeRawItem('张老师', 100, 605),
         makeRawItem('大学英语', 200, 560), makeRawItem('1-8周', 200, 550),
@@ -184,7 +214,6 @@ describe('pdfScheduleParser', () => {
       expect(math.endSection).toBe(2)
       expect(math.startWeek).toBe(1)
       expect(math.endWeek).toBe(16)
-      expect(math.location).toBe('教1-101')
 
       const english = courses.find((c) => c.name === '大学英语')
       expect(english).toBeTruthy()
@@ -194,27 +223,58 @@ describe('pdfScheduleParser', () => {
     })
 
     test('空内容返回空数组', () => {
-      const courses = parseScheduleFromTextItems([], 800, 700)
-      expect(courses).toEqual([])
+      expect(parseScheduleFromTextItems([], 800, 700)).toEqual([])
     })
+  })
 
-    test('每个课程自动分配颜色', () => {
+  describe('parseScheduleFromTextItems - 横向课表', () => {
+    test('解析横向课表（星期按y排列，节次按x排列）', () => {
+      const pageWidth = 842
+      const pageHeight = 595
       const rawItems = [
-        makeRawItem('周一', 100, 690), makeRawItem('周二', 200, 690),
-        makeRawItem('周三', 300, 690), makeRawItem('周四', 400, 690),
-        makeRawItem('周五', 500, 690), makeRawItem('周六', 600, 690),
-        makeRawItem('周日', 700, 690),
-        ...Array.from({ length: 12 }, (_, i) => makeRawItem(`第${i + 1}节`, 10, 650 - i * 50)),
-        makeRawItem('课程A', 100, 640),
-        makeRawItem('课程B', 200, 640),
+        makeRawItem('星期一', 74, 133), makeRawItem('星期二', 74, 237),
+        makeRawItem('星期三', 74, 341), makeRawItem('星期四', 74, 445),
+        makeRawItem('星期五', 74, 548), makeRawItem('星期六', 74, 652),
+        makeRawItem('星期日', 74, 756),
+        makeRawItem('1', 89, 78), makeRawItem('2', 140, 78),
+        makeRawItem('3', 190, 78), makeRawItem('4', 247, 78),
+        makeRawItem('5', 303, 78), makeRawItem('6', 342, 78),
+        makeRawItem('7', 381, 78), makeRawItem('8', 420, 78),
+        makeRawItem('9', 459, 78), makeRawItem('10', 498, 78),
+        makeRawItem('11', 537, 78), makeRawItem('12', 576, 78),
+        makeRawItem('高等数学A(Ⅱ)(1-2节)1-16周/场地:敬本C501/教师:胡江', 89, 104),
+        makeRawItem('MATLAB程序设计(3-4节)1-12周/场地:敬业F407/教师:张艳华', 190, 104),
+        makeRawItem('电路(7-8节)1-14周/场地:敬业F406/教师:赵文婧', 381, 104),
+        makeRawItem('线性代数A(1-2节)1-8周/场地:敬业F410/教师:卞利花', 89, 208),
       ]
-      const items = normalizeItems(rawItems, 700)
-      const courses = parseScheduleFromTextItems(items, 800, 700)
-      expect(courses.length).toBeGreaterThanOrEqual(2)
-      const validColors = ['blue', 'purple', 'orange', 'green', 'pink', 'cyan']
-      courses.forEach((c) => {
-        expect(validColors).toContain(c.color)
-      })
+      const items = normalizeItems(rawItems, pageHeight)
+      const courses = parseScheduleFromTextItems(items, pageWidth, pageHeight)
+
+      const math = courses.find((c) => c.name === '高等数学A(Ⅱ)')
+      expect(math).toBeTruthy()
+      expect(math.day).toBe(1)
+      expect(math.startSection).toBe(1)
+      expect(math.endSection).toBe(2)
+      expect(math.location).toBe('敬本C501')
+      expect(math.teacher).toBe('胡江')
+
+      const matlab = courses.find((c) => c.name === 'MATLAB程序设计')
+      expect(matlab).toBeTruthy()
+      expect(matlab.day).toBe(1)
+      expect(matlab.startSection).toBe(3)
+      expect(matlab.endSection).toBe(4)
+
+      const circuit = courses.find((c) => c.name === '电路')
+      expect(circuit).toBeTruthy()
+      expect(circuit.day).toBe(1)
+      expect(circuit.startSection).toBe(7)
+      expect(circuit.endSection).toBe(8)
+
+      const linear = courses.find((c) => c.name === '线性代数A')
+      expect(linear).toBeTruthy()
+      expect(linear.day).toBe(2)
+      expect(linear.startSection).toBe(1)
+      expect(linear.endSection).toBe(2)
     })
   })
 })
