@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useStudyStore } from '../../stores/study'
 import { useSettingsStore } from '../../stores/settings'
 import { getCurrentWeek, isCourseInWeek } from '../../composables/useWeek'
+import { parsePdfSchedule } from '../../utils/pdfScheduleParser'
 import Btn from '../common/Btn.vue'
 import Modal from '../common/Modal.vue'
 import EmptyState from '../common/EmptyState.vue'
@@ -17,6 +18,44 @@ const form = ref({
   name: '', day: 1, startSection: 1, endSection: 2,
   location: '', teacher: '', startWeek: 1, endWeek: 16, color: 'blue',
 })
+
+const showImportModal = ref(false)
+const importLoading = ref(false)
+const importMessage = ref('')
+const importError = ref('')
+const fileInputRef = ref(null)
+
+async function handlePdfImport() {
+  fileInputRef.value?.click()
+}
+
+async function onFileSelected(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  importLoading.value = true
+  importError.value = ''
+  importMessage.value = ''
+  try {
+    const courses = await parsePdfSchedule(file)
+    if (!courses || courses.length === 0) {
+      importError.value = '解析失败，请检查PDF格式'
+      showImportModal.value = true
+    } else {
+      study.courses.splice(0, study.courses.length)
+      for (const c of courses) {
+        study.addCourse(c)
+      }
+      importMessage.value = `成功导入 ${courses.length} 门课程`
+      showImportModal.value = true
+    }
+  } catch (e) {
+    importError.value = '解析失败，请检查PDF格式'
+    showImportModal.value = true
+  } finally {
+    importLoading.value = false
+    event.target.value = ''
+  }
+}
 
 const colorMap = {
   blue: 'bg-blue-500 text-white', purple: 'bg-purple-500 text-white',
@@ -61,8 +100,25 @@ function getCourseAt(day, section) {
           未设置学期
         </span>
       </div>
-      <Btn @click="openAdd">+ 添加课程</Btn>
+      <div class="flex gap-2">
+        <button
+          @click="handlePdfImport"
+          :disabled="importLoading"
+          class="px-4 py-2 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ importLoading ? '解析中...' : '📥 导入PDF课表' }}
+        </button>
+        <Btn @click="openAdd">+ 添加课程</Btn>
+      </div>
     </div>
+
+    <input
+      ref="fileInputRef"
+      type="file"
+      accept=".pdf"
+      class="hidden"
+      @change="onFileSelected"
+    />
 
     <div v-if="study.courses.length === 0">
       <EmptyState icon="📚" text="还没有课程，点击右上角添加" />
@@ -141,6 +197,14 @@ function getCourseAt(day, section) {
         <Btn variant="danger" v-if="editingId" @click="study.removeCourse(editingId); showForm = false">删除</Btn>
         <Btn variant="secondary" @click="showForm = false">取消</Btn>
         <Btn @click="save">保存</Btn>
+      </template>
+    </Modal>
+
+    <Modal :show="showImportModal" :title="importError ? '导入失败' : '导入成功'" @close="showImportModal = false">
+      <p v-if="importError" class="text-red-500">{{ importError }}</p>
+      <p v-else class="text-green-600">{{ importMessage }}</p>
+      <template #footer>
+        <Btn @click="showImportModal = false">确定</Btn>
       </template>
     </Modal>
   </div>
