@@ -255,11 +255,8 @@ export function parseScheduleFromTextItems(items, pageWidth, pageHeight) {
 // 顶层函数：读取 PDF 文件并解析课表
 // file: File 对象（浏览器文件选择框返回的）
 // 返回 Promise<课程数组>
-export async function parsePdfSchedule(file, pdfjsLib) {
-  if (!pdfjsLib) {
-    const mod = await import('pdfjs-dist')
-    pdfjsLib = mod.default || mod
-  }
+export async function parsePdfSchedule(file) {
+  const { pdfjsLib } = await import('./pdfWorkerSetup.js')
   const arrayBuffer = await file.arrayBuffer()
   const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) })
   const pdf = await loadingTask.promise
