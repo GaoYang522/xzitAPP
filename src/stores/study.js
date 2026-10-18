@@ -7,6 +7,7 @@ export const useStudyStore = defineStore('study', {
     homework: [],
     exams: [],
     grades: [],
+    sectionTimes: [],
   }),
   actions: {
     ...makeActions('courses', 'course'),

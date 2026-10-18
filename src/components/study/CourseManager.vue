@@ -41,7 +41,9 @@ async function onFileSelected(event) {
   importError.value = ''
   importMessage.value = ''
   try {
-    const courses = await parsePdfSchedule(file)
+    const result = await parsePdfSchedule(file)
+    const courses = result.courses || result
+    const sectionTimes = result.sectionTimes
     if (!courses || courses.length === 0) {
       importError.value = '解析失败，请检查PDF格式'
       showImportModal.value = true
@@ -50,6 +52,7 @@ async function onFileSelected(event) {
       for (const c of courses) {
         study.addCourse(c)
       }
+      if (sectionTimes) study.sectionTimes = sectionTimes
       importMessage.value = `成功导入 ${courses.length} 门课程`
       showImportModal.value = true
     }
@@ -90,6 +93,11 @@ function getCourseAt(day, section) {
   return study.courses.find(
     (c) => c.day === day && section >= c.startSection && section <= c.endSection && isCourseInWeek(c, viewWeek.value)
   )
+}
+function sectionTimeText(section) {
+  const t = study.sectionTimes[section]
+  if (t && t.start && t.end) return `${t.start}-${t.end}`
+  return getSectionTime(section)
 }
 </script>
 
@@ -156,7 +164,7 @@ function getCourseAt(day, section) {
         </thead>
         <tbody>
           <tr v-for="section in 14" :key="section">
-            <td class="p-1 text-center text-xs text-gray-400 whitespace-nowrap">{{ getSectionTime(section) }}</td>
+            <td class="p-1 text-center text-xs text-gray-400 whitespace-nowrap">{{ sectionTimeText(section) }}</td>
             <td class="p-2 text-center text-xs text-gray-400">{{ section }}</td>
             <td v-for="day in 7" :key="day" class="p-1 border border-gray-100 dark:border-gray-700 align-top">
               <div v-if="getCourseAt(day, section)" :class="['rounded-lg p-2 text-xs cursor-pointer break-all', colorMap[getCourseAt(day, section).color]]" @click="openEdit(getCourseAt(day, section))">

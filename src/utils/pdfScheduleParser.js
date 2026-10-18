@@ -363,6 +363,25 @@ export function parseScheduleFromTextItems(items, pageWidth, pageHeight, options
   return courses
 }
 
+// 从多页文字项提取时间段映射：跨页收集时间对（按页码+x顺序），按顺序对应节次1-14
+// 返回数组 times[1..14] = { start, end } 或 null
+export function extractSectionTimes(pagesItems) {
+  const allPairs = []
+  for (const items of pagesItems) {
+    const timeItems = items
+      .filter((it) => /^\d{1,2}:\d{2}$/.test(it.str.trim()))
+      .sort((a, b) => a.x - b.x)
+    for (let i = 0; i + 1 < timeItems.length; i += 2) {
+      allPairs.push({ start: timeItems[i].str.trim(), end: timeItems[i + 1].str.trim() })
+    }
+  }
+  const times = [null]
+  for (let n = 1; n <= 14; n++) {
+    times[n] = allPairs[n - 1] || null
+  }
+  return times
+}
+
 // 顶层函数：读取 PDF 文件并解析课表
 export async function parsePdfSchedule(file) {
   const { pdfjsLib } = await import('./pdfWorkerSetup.js')
@@ -394,6 +413,7 @@ export async function parsePdfSchedule(file) {
     const courses = parseScheduleFromTextItems(items, width, height, { orientation, dayBounds, sectionBounds })
     allCourses.push(...courses)
   }
+  const sectionTimes = extractSectionTimes(pagesData.map((p) => p.items))
   await pdf.cleanup()
-  return allCourses
+  return { courses: allCourses, sectionTimes }
 }

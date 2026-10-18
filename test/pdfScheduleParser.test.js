@@ -10,6 +10,7 @@ import {
   parseCellContent,
   groupLines,
   parseScheduleFromTextItems,
+  extractSectionTimes,
 } from '../src/utils/pdfScheduleParser'
 
 function makeRawItem(str, x, y) {
@@ -333,6 +334,37 @@ describe('pdfScheduleParser', () => {
     test('parseCellContent 节次信息在开头时返回null', () => {
       expect(parseCellContent(['(12-13节)15周/场地:教1'])).toBeNull()
       expect(parseCellContent(['12-14节9-14周/场地:教1'])).toBeNull()
+    })
+  })
+
+  describe('extractSectionTimes 时间段提取', () => {
+    test('单页11对时间对应节次1-11，12-14为null', () => {
+      const times = ['08:00','08:45','08:55','09:40','10:05','10:50','11:00','11:45','12:00','12:45','12:55','13:40','14:00','14:45','14:55','15:40','16:05','16:50','17:00','17:45','17:55','18:35']
+      const raw = times.map((t, i) => makeRawItem(t, 100 + i * 20, 526))
+      const items = normalizeItems(raw, 600)
+      const result = extractSectionTimes([items])
+      expect(result[1]).toEqual({ start: '08:00', end: '08:45' })
+      expect(result[5]).toEqual({ start: '12:00', end: '12:45' })
+      expect(result[11]).toEqual({ start: '17:55', end: '18:35' })
+      expect(result[12]).toBeNull()
+      expect(result[14]).toBeNull()
+    })
+
+    test('两页合并14对时间对应节次1-14', () => {
+      const t1 = ['08:00','08:45','08:55','09:40','10:05','10:50','11:00','11:45','12:00','12:45','12:55','13:40','14:00','14:45','14:55','15:40','16:05','16:50','17:00','17:45','17:55','18:35']
+      const raw1 = t1.map((t, i) => makeRawItem(t, 100 + i * 20, 526))
+      const t2 = ['18:45','19:30','19:40','20:25','20:35','21:20']
+      const raw2 = t2.map((t, i) => makeRawItem(t, 30 + i * 20, 526))
+      const result = extractSectionTimes([normalizeItems(raw1, 600), normalizeItems(raw2, 600)])
+      expect(result[12]).toEqual({ start: '18:45', end: '19:30' })
+      expect(result[13]).toEqual({ start: '19:40', end: '20:25' })
+      expect(result[14]).toEqual({ start: '20:35', end: '21:20' })
+    })
+
+    test('空页返回全null', () => {
+      const result = extractSectionTimes([[]])
+      expect(result[1]).toBeNull()
+      expect(result[14]).toBeNull()
     })
   })
 })

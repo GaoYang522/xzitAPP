@@ -78,6 +78,24 @@ describe('CourseManager 课表管理', () => {
     expect(wrapper.text()).toContain('14:00-14:45')
   })
 
+  test('课表优先显示从PDF提取的时间段', () => {
+    setSemester()
+    const store = useStudyStore()
+    store.sectionTimes = [null,
+      { start: '08:00', end: '08:45' }, { start: '08:55', end: '09:40' },
+      { start: '10:05', end: '10:50' }, { start: '11:00', end: '11:45' },
+      { start: '12:00', end: '12:45' }, { start: '12:55', end: '13:40' },
+      { start: '14:00', end: '14:45' }, { start: '14:55', end: '15:40' },
+      { start: '16:05', end: '16:50' }, { start: '17:00', end: '17:45' },
+      { start: '17:55', end: '18:35' }, { start: '18:45', end: '19:30' },
+      { start: '19:40', end: '20:25' }, { start: '20:35', end: '21:20' },
+    ]
+    store.addCourse({ name: '高数', day: 1, startSection: 5, endSection: 6, location: '教1', startWeek: 1, endWeek: 16, color: 'blue' })
+    const wrapper = mount(CourseManager)
+    expect(wrapper.text()).toContain('12:00-12:45')
+    expect(wrapper.text()).not.toContain('16:00-16:45')
+  })
+
   test('课程卡片显示教师信息', () => {
     setSemester()
     const store = useStudyStore()
