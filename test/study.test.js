@@ -77,6 +77,23 @@ describe('CourseManager 课表管理', () => {
     expect(wrapper.text()).toContain('08:00-08:45')
     expect(wrapper.text()).toContain('14:00-14:45')
   })
+
+  test('课程卡片显示教师信息', () => {
+    setSemester()
+    const store = useStudyStore()
+    store.addCourse({ name: '高等数学', day: 1, startSection: 1, endSection: 2, location: '敬本C501', teacher: '胡江', startWeek: 1, endWeek: 16, color: 'blue' })
+    const wrapper = mount(CourseManager)
+    expect(wrapper.text()).toContain('胡江')
+  })
+
+  test('教师为空时不显示教师行', () => {
+    setSemester()
+    const store = useStudyStore()
+    store.addCourse({ name: '自习', day: 1, startSection: 1, endSection: 2, location: '图书馆', teacher: '', startWeek: 1, endWeek: 16, color: 'blue' })
+    const wrapper = mount(CourseManager)
+    expect(wrapper.text()).toContain('自习')
+    expect(wrapper.text()).not.toContain('👤')
+  })
 })
 
 describe('HomeworkManager 作业管理', () => {

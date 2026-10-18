@@ -144,6 +144,7 @@ function getCourseAt(day, section) {
               <div v-if="getCourseAt(day, section)" :class="['rounded-lg p-2 text-xs cursor-pointer break-all', colorMap[getCourseAt(day, section).color]]" @click="openEdit(getCourseAt(day, section))">
                 <div class="font-semibold leading-tight">{{ getCourseAt(day, section).name }}</div>
                 <div class="opacity-80">@{{ getCourseAt(day, section).location || '未排地点' }}</div>
+                <div v-if="getCourseAt(day, section).teacher" class="opacity-80 mt-0.5">👤 {{ getCourseAt(day, section).teacher }}</div>
               </div>
             </td>
           </tr>
