@@ -48,6 +48,25 @@ describe('CourseManager 课表管理', () => {
     const wrapper = mount(CourseManager)
     expect(wrapper.text()).toContain('高数')
   })
+
+  test('课表渲染14节（支持第13、14节）', () => {
+    setSemester()
+    const store = useStudyStore()
+    store.addCourse({ name: '晚自习', day: 1, startSection: 13, endSection: 14, location: '图书馆', startWeek: 1, endWeek: 16, color: 'blue' })
+    const wrapper = mount(CourseManager)
+    expect(wrapper.text()).toContain('晚自习')
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.length).toBe(14)
+  })
+
+  test('location为空时显示未排地点', () => {
+    setSemester()
+    const store = useStudyStore()
+    store.addCourse({ name: '大学生心理健康教育', day: 1, startSection: 12, endSection: 12, location: '', startWeek: 1, endWeek: 16, color: 'blue' })
+    const wrapper = mount(CourseManager)
+    expect(wrapper.text()).toContain('大学生心理健康教育')
+    expect(wrapper.text()).toContain('未排地点')
+  })
 })
 
 describe('HomeworkManager 作业管理', () => {

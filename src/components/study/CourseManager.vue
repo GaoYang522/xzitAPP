@@ -135,12 +135,12 @@ function getCourseAt(day, section) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="section in 12" :key="section">
+          <tr v-for="section in 14" :key="section">
             <td class="p-2 text-center text-xs text-gray-400">{{ section }}</td>
             <td v-for="day in 7" :key="day" class="p-1 border border-gray-100 dark:border-gray-700 align-top">
-              <div v-if="getCourseAt(day, section)" :class="['rounded-lg p-2 text-xs cursor-pointer', colorMap[getCourseAt(day, section).color]]" @click="openEdit(getCourseAt(day, section))">
-                <div class="font-semibold">{{ getCourseAt(day, section).name }}</div>
-                <div class="opacity-80">@{{ getCourseAt(day, section).location }}</div>
+              <div v-if="getCourseAt(day, section)" :class="['rounded-lg p-2 text-xs cursor-pointer break-all', colorMap[getCourseAt(day, section).color]]" @click="openEdit(getCourseAt(day, section))">
+                <div class="font-semibold leading-tight">{{ getCourseAt(day, section).name }}</div>
+                <div class="opacity-80">@{{ getCourseAt(day, section).location || '未排地点' }}</div>
               </div>
             </td>
           </tr>
@@ -167,11 +167,11 @@ function getCourseAt(day, section) {
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">起始节次</label>
-            <input type="number" min="1" max="12" v-model="form.startSection" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white" />
+            <input type="number" min="1" max="14" v-model="form.startSection" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">结束节次</label>
-            <input type="number" min="1" max="12" v-model="form.endSection" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white" />
+            <input type="number" min="1" max="14" v-model="form.endSection" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">起始周</label>
