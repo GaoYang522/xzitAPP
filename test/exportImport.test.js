@@ -10,6 +10,7 @@ import { useStudyStore } from '../src/stores/study'
 import { useToolsStore } from '../src/stores/tools'
 import { useLifeStore } from '../src/stores/life'
 import { useSettingsStore } from '../src/stores/settings'
+import { useAssistantStore } from '../src/stores/assistant'
 
 beforeEach(() => {
   localStorage.clear()
@@ -23,7 +24,7 @@ describe('exportAllData 导出', () => {
     study.addHomework({ subject: '高数', content: '习题1' })
 
     const data = exportAllData()
-    expect(data.version).toBe('1.0.0')
+    expect(data.version).toBe('2.0.0')
     expect(data.study.courses).toHaveLength(1)
     expect(data.study.homework).toHaveLength(1)
   })
@@ -158,5 +159,158 @@ describe('导出导入闭环', () => {
     const toolsFinal = useToolsStore()
     expect(toolsFinal.todos).toHaveLength(1)
     expect(toolsFinal.todos[0].title).toBe('买书')
+  })
+})
+describe('assistant 数据导出', () => {
+  test('导出包含 assistant 模块数据', () => {
+    const assistant = useAssistantStore()
+    const session = assistant.createSession()
+    session.messages.push({ role: 'user', content: '测试消息', timestamp: new Date().toISOString() })
+
+    const data = exportAllData()
+    expect(data.assistant).toBeDefined()
+    expect(data.assistant.sessions).toHaveLength(1)
+    expect(data.assistant.sessions[0].messages).toHaveLength(1)
+  })
+
+  test('默认导出不包含 API Key', () => {
+    const assistant = useAssistantStore()
+    assistant.setApiConfig({ llmApiKey: 'sk-secret-key', compileApiKey: 'compile-secret' })
+
+    const data = exportAllData()
+    expect(data.assistant.apiConfig.llmApiKey).toBe('')
+    expect(data.assistant.apiConfig.compileApiKey).toBe('')
+  })
+
+  test('includeApiKey=true 时导出包含 API Key', () => {
+    const assistant = useAssistantStore()
+    assistant.setApiConfig({ llmApiKey: 'sk-secret-key', compileApiKey: 'compile-secret' })
+
+    const data = exportAllData(true)
+    expect(data.assistant.apiConfig.llmApiKey).toBe('sk-secret-key')
+    expect(data.assistant.apiConfig.compileApiKey).toBe('compile-secret')
+  })
+
+  test('导出包含 currentSessionId', () => {
+    const assistant = useAssistantStore()
+    const session = assistant.createSession()
+
+    const data = exportAllData()
+    expect(data.assistant.currentSessionId).toBe(session.id)
+  })
+})
+
+describe('assistant 数据导入', () => {
+  test('导入恢复 assistant 会话数据', () => {
+    const data = {
+      version: '2.0.0',
+      assistant: {
+        sessions: [{ id: 's1', title: '测试会话', messages: [], createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' }],
+        currentSessionId: 's1',
+        apiConfig: { llmProvider: 'deepseek', llmApiKey: '', llmBaseUrl: 'https://api.deepseek.com', llmModel: 'deepseek-chat', compileApiUrl: '', compileApiKey: '' },
+      },
+    }
+
+    importAllData(data)
+    const assistant = useAssistantStore()
+    expect(assistant.sessions).toHaveLength(1)
+    expect(assistant.sessions[0].title).toBe('测试会话')
+    expect(assistant.currentSessionId).toBe('s1')
+  })
+
+  test('导入恢复 assistant API 配置', () => {
+    const data = {
+      version: '2.0.0',
+      assistant: {
+        sessions: [],
+        currentSessionId: null,
+        apiConfig: { llmProvider: 'deepseek', llmApiKey: 'sk-restored', llmBaseUrl: 'https://api.deepseek.com', llmModel: 'deepseek-chat', compileApiUrl: 'http://compile.api', compileApiKey: 'ck-restored' },
+      },
+    }
+
+    importAllData(data)
+    const assistant = useAssistantStore()
+    expect(assistant.apiConfig.llmApiKey).toBe('sk-restored')
+    expect(assistant.apiConfig.compileApiKey).toBe('ck-restored')
+  })
+
+  test('无 assistant 数据时导入不报错', () => {
+    const data = { version: '2.0.0' }
+    expect(() => importAllData(data)).not.toThrow()
+  })
+})
+
+describe('clearModule assistant', () => {
+  test('清空 assistant 模块', () => {
+    const assistant = useAssistantStore()
+    assistant.createSession()
+    assistant.createSession()
+    expect(assistant.sessions).toHaveLength(2)
+
+    clearModule('assistant')
+    expect(assistant.sessions).toHaveLength(0)
+    expect(assistant.currentSessionId).toBeNull()
+  })
+
+  test('清空 assistant 不影响其他模块', () => {
+    const study = useStudyStore()
+    const assistant = useAssistantStore()
+    study.addCourse({ name: '高数' })
+    assistant.createSession()
+
+    clearModule('assistant')
+    expect(assistant.sessions).toHaveLength(0)
+    expect(study.courses).toHaveLength(1)
+  })
+})
+
+describe('clearAll 包含 assistant', () => {
+  test('clearAll 清空 assistant 数据', () => {
+    const assistant = useAssistantStore()
+    const study = useStudyStore()
+    assistant.createSession()
+    study.addCourse({ name: '高数' })
+
+    clearAll()
+    expect(assistant.sessions).toHaveLength(0)
+    expect(study.courses).toHaveLength(0)
+  })
+})
+
+describe('assistant 导出导入闭环', () => {
+  test('assistant 数据导出后导入一致', () => {
+    const assistant = useAssistantStore()
+    assistant.setApiConfig({ llmApiKey: 'sk-test', llmModel: 'deepseek-chat' })
+    const session = assistant.createSession()
+    session.messages.push({ role: 'user', content: '你好', timestamp: '2026-01-01T00:00:00Z' })
+    session.messages.push({ role: 'assistant', content: '你好！', timestamp: '2026-01-01T00:00:01Z' })
+
+    const data = exportAllData(true)
+
+    clearAll()
+    const assistantCleared = useAssistantStore()
+    expect(assistantCleared.sessions).toHaveLength(0)
+
+    importAllData(data)
+    const assistantFinal = useAssistantStore()
+    expect(assistantFinal.sessions).toHaveLength(1)
+    expect(assistantFinal.sessions[0].title).toBe(session.title)
+    expect(assistantFinal.sessions[0].messages).toHaveLength(2)
+    expect(assistantFinal.sessions[0].messages[0].content).toBe('你好')
+    expect(assistantFinal.apiConfig.llmApiKey).toBe('sk-test')
+  })
+
+  test('不含 API Key 导出后导入不恢复密钥', () => {
+    const assistant = useAssistantStore()
+    assistant.setApiConfig({ llmApiKey: 'sk-secret' })
+    assistant.createSession()
+
+    const data = exportAllData(false)
+
+    clearAll()
+    importAllData(data)
+    const assistantFinal = useAssistantStore()
+    expect(assistantFinal.sessions).toHaveLength(1)
+    expect(assistantFinal.apiConfig.llmApiKey).toBe('')
   })
 })

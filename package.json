@@ -10,7 +10,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "docx": "^9.13.0",
+    "file-saver": "^2.0.5",
+    "jspdf": "^4.2.1",
     "lucide-vue-next": "^0.460.0",
+    "marked": "^18.1.1",
     "pdfjs-dist": "^6.4.299",
     "pinia": "^2.2.0",
     "pinia-plugin-persistedstate": "^3.2.1",

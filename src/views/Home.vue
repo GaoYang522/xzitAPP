@@ -3,6 +3,7 @@ import TodaySchedule from '../components/home/TodaySchedule.vue'
 import TodayTodos from '../components/home/TodayTodos.vue'
 import SummaryCards from '../components/home/SummaryCards.vue'
 import QuickActions from '../components/home/QuickActions.vue'
+import AiChatWidget from '../components/home/AiChatWidget.vue'
 </script>
 
 <template>
@@ -14,5 +15,6 @@ import QuickActions from '../components/home/QuickActions.vue'
       <TodayTodos />
     </div>
     <SummaryCards />
+    <AiChatWidget />
   </div>
 </template>

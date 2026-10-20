@@ -6,6 +6,7 @@ import { useToolsStore } from '../stores/tools'
 import { useLifeStore } from '../stores/life'
 import { useClubStore } from '../stores/club'
 import { useHealthStore } from '../stores/health'
+import { useAssistantStore } from '../stores/assistant'
 import {
   exportAllData,
   importAllData,
@@ -25,6 +26,7 @@ const tools = useToolsStore()
 const life = useLifeStore()
 const club = useClubStore()
 const health = useHealthStore()
+const assistant = useAssistantStore()
 
 const dataOverview = computed(() => [
   { name: '课程', count: study.courses.length },
@@ -46,6 +48,7 @@ const dataOverview = computed(() => [
   { name: '备忘录', count: tools.notes.length },
   { name: '倒计时', count: tools.countdowns.length },
   { name: '习惯', count: tools.habits.length },
+  { name: 'AI 助手会话', count: assistant.sessionCount },
 ])
 
 const totalRecords = computed(() => dataOverview.value.reduce((sum, item) => sum + item.count, 0))
@@ -55,10 +58,16 @@ const confirmShow = ref(false)
 const confirmTitle = ref('')
 const confirmMessage = ref('')
 const confirmAction = ref(null)
+const exportConfirmShow = ref(false)
 
 function handleExport() {
-  const data = exportAllData()
+  exportConfirmShow.value = true
+}
+
+function handleExportConfirm(includeApiKey) {
+  const data = exportAllData(includeApiKey)
   downloadJSON(data, generateBackupFilename())
+  exportConfirmShow.value = false
 }
 
 function handleImportClick() {
@@ -88,7 +97,7 @@ function handleFileSelect(event) {
   event.target.value = ''
 }
 
-const moduleLabels = { study: '学业学习', tools: '工具备忘', life: '校园生活', club: '社团社交', health: '健康管理' }
+const moduleLabels = { study: '学业学习', tools: '工具备忘', life: '校园生活', club: '社团社交', health: '健康管理', assistant: 'AI 助手' }
 
 function handleClearModule(moduleName) {
   confirmTitle.value = '清空数据'
@@ -176,8 +185,8 @@ function handleConfirm() {
     <AppCard>
       <div class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
         <p><strong>应用名称：</strong>校园一站式 APP</p>
-        <p><strong>版本：</strong>v1.0.0</p>
-        <p><strong>说明：</strong>大学生校园生活一站式管理工具，数据本地保存，无需联网。</p>
+        <p><strong>版本：</strong>v2.0.0</p>
+        <p><strong>说明：</strong>大学生校园生活一站式管理工具，集成 AI 助手，数据本地保存。</p>
       </div>
     </AppCard>
 
@@ -188,5 +197,17 @@ function handleConfirm() {
       @confirm="handleConfirm"
       @cancel="confirmShow = false"
     />
+
+    <ConfirmDialog
+      :show="exportConfirmShow"
+      title="导出备份"
+      message="是否在备份中包含 API Key？（包含存在安全风险，建议不包含）"
+      @confirm="handleExportConfirm(false)"
+      @cancel="exportConfirmShow = false"
+    >
+      <template #extra>
+        <button class="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600" @click="handleExportConfirm(true)">包含 API Key</button>
+      </template>
+    </ConfirmDialog>
   </div>
 </template>

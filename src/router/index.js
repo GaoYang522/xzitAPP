@@ -5,6 +5,7 @@ import Life from '../views/Life.vue'
 import Club from '../views/Club.vue'
 import Health from '../views/Health.vue'
 import Tools from '../views/Tools.vue'
+import Assistant from '../views/Assistant.vue'
 import Settings from '../views/Settings.vue'
 
 const routes = [
@@ -14,6 +15,7 @@ const routes = [
   { path: '/club', name: 'club', component: Club },
   { path: '/health', name: 'health', component: Health },
   { path: '/tools', name: 'tools', component: Tools },
+  { path: '/assistant', name: 'assistant', component: Assistant },
   { path: '/settings', name: 'settings', component: Settings },
 ]
 

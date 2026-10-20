@@ -2,7 +2,7 @@
 import { watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSettingsStore } from './stores/settings'
-import { Home, BookOpen, Coffee, Users, Heart, Wrench, Settings } from 'lucide-vue-next'
+import { Home, BookOpen, Coffee, Users, Heart, Wrench, Bot, Settings } from 'lucide-vue-next'
 
 const route = useRoute()
 const settings = useSettingsStore()
@@ -14,6 +14,7 @@ const navItems = [
   { path: '/club', label: '社团', icon: Users },
   { path: '/health', label: '健康', icon: Heart },
   { path: '/tools', label: '工具', icon: Wrench },
+  { path: '/assistant', label: '助手', icon: Bot },
   { path: '/settings', label: '设置', icon: Settings },
 ]
 

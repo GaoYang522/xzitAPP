@@ -15,6 +15,7 @@ const emit = defineEmits(['confirm', 'cancel'])
       <div class="relative bg-white dark:bg-gray-800 rounded-xl2 shadow-xl w-full max-w-sm p-6">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{{ title }}</h3>
         <p class="text-gray-500 dark:text-gray-400 mb-5">{{ message }}</p>
+        <slot name="extra" />
         <div class="flex justify-end gap-2">
           <Btn variant="secondary" @click="emit('cancel')">取消</Btn>
           <Btn variant="danger" @click="emit('confirm')">确认</Btn>

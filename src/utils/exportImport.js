@@ -4,17 +4,21 @@ import { useLifeStore } from '../stores/life'
 import { useClubStore } from '../stores/club'
 import { useHealthStore } from '../stores/health'
 import { useSettingsStore } from '../stores/settings'
+import { useAssistantStore } from '../stores/assistant'
 
-export function exportAllData() {
+export function exportAllData(includeApiKey = false) {
   const study = useStudyStore()
   const tools = useToolsStore()
   const life = useLifeStore()
   const club = useClubStore()
   const health = useHealthStore()
   const settings = useSettingsStore()
+  const assistant = useAssistantStore()
+
+  const assistantData = assistant.getSessionsForExport(includeApiKey)
 
   return {
-    version: '1.0.0',
+    version: '2.0.0',
     exportDate: new Date().toISOString(),
     study: {
       courses: study.courses,
@@ -51,6 +55,7 @@ export function exportAllData() {
       semesterStart: settings.semesterStart,
       totalWeeks: settings.totalWeeks,
     },
+    assistant: assistantData,
   }
 }
 
@@ -63,6 +68,7 @@ export function importAllData(data) {
   const club = useClubStore()
   const health = useHealthStore()
   const settings = useSettingsStore()
+  const assistant = useAssistantStore()
 
   if (data.study) {
     study.courses = data.study.courses || []
@@ -99,6 +105,9 @@ export function importAllData(data) {
     settings.semesterStart = data.settings.semesterStart || ''
     settings.totalWeeks = data.settings.totalWeeks || 20
   }
+  if (data.assistant) {
+    assistant.restoreFromImport(data.assistant)
+  }
 }
 
 export function clearModule(moduleName) {
@@ -107,6 +116,7 @@ export function clearModule(moduleName) {
   const life = useLifeStore()
   const club = useClubStore()
   const health = useHealthStore()
+  const assistant = useAssistantStore()
 
   switch (moduleName) {
     case 'study':
@@ -139,6 +149,9 @@ export function clearModule(moduleName) {
       health.exercises = []
       health.moods = []
       break
+    case 'assistant':
+      assistant.clearAllSessions()
+      break
   }
 }
 
@@ -148,6 +161,7 @@ export function clearAll() {
   clearModule('life')
   clearModule('club')
   clearModule('health')
+  clearModule('assistant')
 }
 
 export function generateBackupFilename() {

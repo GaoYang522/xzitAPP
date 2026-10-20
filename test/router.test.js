@@ -1,8 +1,8 @@
 import router from '../src/router/index.js'
 
 describe('路由配置', () => {
-  test('应有 7 个路由', () => {
-    expect(router.options.routes).toHaveLength(7)
+  test('应有 8 个路由', () => {
+    expect(router.options.routes).toHaveLength(8)
   })
 
   test('路由路径正确', () => {
@@ -14,6 +14,7 @@ describe('路由配置', () => {
       '/club',
       '/health',
       '/tools',
+      '/assistant',
       '/settings',
     ])
   })
@@ -27,6 +28,7 @@ describe('路由配置', () => {
       'club',
       'health',
       'tools',
+      'assistant',
       'settings',
     ])
   })
@@ -35,5 +37,11 @@ describe('路由配置', () => {
     router.options.routes.forEach((r) => {
       expect(r.component).toBeDefined()
     })
+  })
+
+  test('assistant 路由存在', () => {
+    const route = router.options.routes.find((r) => r.name === 'assistant')
+    expect(route).toBeDefined()
+    expect(route.path).toBe('/assistant')
   })
 })
