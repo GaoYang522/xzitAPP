@@ -1,26 +1,37 @@
 <script setup>
 import { ref, nextTick, computed } from 'vue'
 import { useAssistantStore } from '../../stores/assistant.js'
-import { Send, Loader2, MessageSquare } from 'lucide-vue-next'
+import { Send, Loader2, MessageSquare, Paperclip, X, FileText } from 'lucide-vue-next'
 import ChatMessage from './ChatMessage.vue'
 import { executeCode } from '../../utils/codeExecutor.js'
 import { exportReport } from '../../agents/circuitReportAgent.js'
+import { parseFile } from '../../utils/fileParser.js'
 
 const store = useAssistantStore()
 
 const input = ref('')
 const loading = ref(false)
 const messagesContainer = ref(null)
+const fileInput = ref(null)
+const selectedFile = ref(null)
+const parsedContent = ref(null)
+const parsing = ref(false)
+const fileError = ref(null)
 
 const messages = computed(() => store.currentSession?.messages || [])
 
 async function send() {
-  if (!input.value.trim() || loading.value) return
-  const text = input.value.trim()
+  if ((!input.value.trim() && !parsedContent.value) || loading.value) return
+  const text = input.value.trim() || '请分析我上传的文件'
+  const fileContent = parsedContent.value || null
+  const fileName = selectedFile.value?.name || null
   input.value = ''
+  selectedFile.value = null
+  parsedContent.value = null
+  fileError.value = null
   loading.value = true
   try {
-    await store.sendMessage(text)
+    await store.sendMessage(text, { fileContent, fileName })
   } finally {
     loading.value = false
     await nextTick()
@@ -35,6 +46,39 @@ function handleKeydown(e) {
     e.preventDefault()
     send()
   }
+}
+
+function triggerFileUpload() {
+  fileInput.value?.click()
+}
+
+async function onFileSelect(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  selectedFile.value = file
+  parsing.value = true
+  fileError.value = null
+  try {
+    const result = await parseFile(file)
+    if (result.error) {
+      fileError.value = result.error
+      parsedContent.value = null
+    } else {
+      parsedContent.value = result.content
+    }
+  } catch (err) {
+    fileError.value = `文件解析失败: ${err.message}`
+    parsedContent.value = null
+  } finally {
+    parsing.value = false
+    e.target.value = ''
+  }
+}
+
+function clearFile() {
+  selectedFile.value = null
+  parsedContent.value = null
+  fileError.value = null
 }
 
 async function onExecuteCode({ code, language }) {
@@ -98,7 +142,29 @@ function startNewSession() {
       />
     </div>
 
+    <div v-if="selectedFile" class="mt-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 flex items-center gap-2 text-sm">
+      <FileText class="w-4 h-4 text-blue-500 flex-shrink-0" />
+      <span class="flex-1 truncate text-gray-700 dark:text-gray-300">{{ selectedFile.name }}</span>
+      <span v-if="parsing" class="text-blue-500 flex items-center gap-1">
+        <Loader2 class="w-3 h-3 animate-spin" /> 解析中...
+      </span>
+      <span v-else-if="fileError" class="text-red-500">{{ fileError }}</span>
+      <span v-else-if="parsedContent" class="text-green-500">已解析</span>
+      <button @click="clearFile" class="text-gray-400 hover:text-red-500 flex-shrink-0">
+        <X class="w-4 h-4" />
+      </button>
+    </div>
+
     <div class="mt-3 flex gap-2">
+      <input ref="fileInput" type="file" class="hidden" @change="onFileSelect" accept="image/*,.pdf,.docx,.doc,.txt,.md" />
+      <button
+        @click="triggerFileUpload"
+        :disabled="parsing || loading"
+        class="px-3 rounded-xl2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors flex items-center justify-center"
+        title="上传文件"
+      >
+        <Paperclip class="w-5 h-5 text-gray-500" />
+      </button>
       <textarea
         v-model="input"
         @keydown="handleKeydown"
@@ -108,7 +174,7 @@ function startNewSession() {
       />
       <button
         @click="send"
-        :disabled="!input.trim() || loading"
+        :disabled="(!input.trim() && !parsedContent) || loading || parsing"
         class="px-4 rounded-xl2 bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center justify-center"
       >
         <Loader2 v-if="loading" class="w-5 h-5 animate-spin" />

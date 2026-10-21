@@ -62,24 +62,28 @@ export const useAssistantStore = defineStore('assistant', {
       return session
     },
 
-    async sendMessage(text) {
+    async sendMessage(text, { fileContent, fileName } = {}) {
       if (!this.currentSession) {
         this.createSession()
       }
       const session = this.currentSession
 
-      session.messages.push({
+      const userMessage = {
         role: 'user',
         content: text,
         timestamp: new Date().toISOString(),
-      })
+      }
+      if (fileName) userMessage.fileName = fileName
+      session.messages.push(userMessage)
 
       if (session.messages.length === 1) {
         session.title = text.slice(0, 20) + (text.length > 20 ? '...' : '')
       }
 
       const options = getLlmOptions(this.apiConfig)
-      const result = await handleMessage(text, options)
+      const context = {}
+      if (fileContent) context.fileContent = fileContent
+      const result = await handleMessage(text, options, context)
 
       const assistantMessage = {
         role: 'assistant',

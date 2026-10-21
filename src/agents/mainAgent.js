@@ -102,14 +102,15 @@ export async function routeToAgent(agentId, userInput, context = {}, options = {
   return handler(userInput, context, options)
 }
 
-export async function executeWorkflow(steps, userInput, options = {}) {
+export async function executeWorkflow(steps, userInput, options = {}, context = {}) {
   const results = []
   let previousResult = null
 
   for (let i = 0; i < steps.length; i++) {
     const agentId = steps[i]
-    const context = previousResult ? { previousResult } : {}
-    const result = await routeToAgent(agentId, userInput, context, options)
+    const stepContext = { ...context }
+    if (previousResult) stepContext.previousResult = previousResult
+    const result = await routeToAgent(agentId, userInput, stepContext, options)
 
     if (result.error) {
       results.push({ step: i + 1, agentId, error: result.error, message: result.message })
@@ -132,10 +133,10 @@ export async function executeWorkflow(steps, userInput, options = {}) {
   }
 }
 
-export async function handleMessage(userInput, options = {}) {
+export async function handleMessage(userInput, options = {}, context = {}) {
   const kwResult = keywordRoute(userInput)
   if (kwResult) {
-    const result = await routeToAgent(kwResult.agentId, userInput, {}, options)
+    const result = await routeToAgent(kwResult.agentId, userInput, context, options)
     if (result.error) {
       return { error: result.error, message: result.message }
     }
@@ -145,6 +146,7 @@ export async function handleMessage(userInput, options = {}) {
       agentName: getAgentById(kwResult.agentId)?.shortName,
       content: result.content,
       routeInfo: { method: 'keyword', agentId: kwResult.agentId },
+      createdTodos: result.createdTodos,
     }
   }
 
@@ -154,7 +156,7 @@ export async function handleMessage(userInput, options = {}) {
   }
 
   if (intentResult.type === 'single') {
-    const result = await routeToAgent(intentResult.agentId, userInput, {}, options)
+    const result = await routeToAgent(intentResult.agentId, userInput, context, options)
     if (result.error) {
       return { error: result.error, message: result.message }
     }
@@ -164,11 +166,12 @@ export async function handleMessage(userInput, options = {}) {
       agentName: getAgentById(intentResult.agentId)?.shortName,
       content: result.content,
       routeInfo: { method: 'llm', agentId: intentResult.agentId },
+      createdTodos: result.createdTodos,
     }
   }
 
   if (intentResult.type === 'workflow') {
-    const result = await executeWorkflow(intentResult.steps, userInput, options)
+    const result = await executeWorkflow(intentResult.steps, userInput, options, context)
     return {
       type: 'workflow',
       steps: result.steps,
@@ -177,7 +180,7 @@ export async function handleMessage(userInput, options = {}) {
     }
   }
 
-  const chatResult = await routeToAgent('chat', userInput, {}, options)
+  const chatResult = await routeToAgent('chat', userInput, context, options)
   if (chatResult.error) {
     return { error: chatResult.error, message: chatResult.message }
   }
