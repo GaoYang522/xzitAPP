@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
 import { SUB_AGENTS, getAgentById, getAgentIds } from '../src/agents/agentConfig.js'
 import { keywordRoute, analyzeIntent, routeToAgent, executeWorkflow, handleMessage } from '../src/agents/mainAgent.js'
 import { handle as matlabHandle, executeCode as matlabExecCode } from '../src/agents/matlabAgent.js'
@@ -18,6 +19,7 @@ function mockLlmResponse(content) {
 }
 
 beforeEach(() => {
+  setActivePinia(createPinia())
   vi.stubGlobal('fetch', vi.fn())
 })
 
@@ -27,8 +29,8 @@ afterEach(() => {
 })
 
 describe('agentConfig', () => {
-  test('有 3 个子 Agent', () => {
-    expect(SUB_AGENTS).toHaveLength(3)
+  test('有 4 个子 Agent', () => {
+    expect(SUB_AGENTS).toHaveLength(4)
   })
 
   test('每个子 Agent 有必需字段', () => {
@@ -50,7 +52,7 @@ describe('agentConfig', () => {
   })
 
   test('getAgentIds 返回所有 ID', () => {
-    expect(getAgentIds()).toEqual(['matlab', 'circuit-report', 'fpga'])
+    expect(getAgentIds()).toEqual(['matlab', 'circuit-report', 'fpga', 'chat'])
   })
 })
 
@@ -197,11 +199,14 @@ describe('handleMessage', () => {
     expect(result.steps).toHaveLength(2)
   })
 
-  test('unclear 时返回候选列表', async () => {
-    fetch.mockResolvedValue(mockLlmResponse('{"type": "unclear"}'))
+  test('unclear 时路由到 chat Agent', async () => {
+    fetch
+      .mockResolvedValueOnce(mockLlmResponse('{"type": "unclear"}'))
+      .mockResolvedValueOnce(mockLlmResponse('你好！有什么可以帮你的？'))
     const result = await handleMessage('今天天气怎么样', { apiKey: 'sk-test' })
-    expect(result.type).toBe('unclear')
-    expect(result.candidates).toHaveLength(3)
+    expect(result.type).toBe('single')
+    expect(result.agentId).toBe('chat')
+    expect(result.routeInfo.method).toBe('fallback')
   })
 })
 

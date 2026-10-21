@@ -140,7 +140,7 @@ describe('AgentList', () => {
   test('点击 Agent 触发 select 事件', async () => {
     const wrapper = mount(AgentList)
     const cards = wrapper.findAll('.cursor-pointer')
-    expect(cards.length).toBe(3)
+    expect(cards.length).toBe(4)
     await cards[0].trigger('click')
     expect(wrapper.emitted('select')).toBeTruthy()
   })

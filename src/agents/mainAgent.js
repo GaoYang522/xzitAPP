@@ -3,6 +3,7 @@ import { SUB_AGENTS, getAgentById } from './agentConfig.js'
 import { handle as matlabHandle } from './matlabAgent.js'
 import { handle as circuitReportHandle } from './circuitReportAgent.js'
 import { handle as fpgaHandle } from './fpgaAgent.js'
+import { handle as chatHandle } from './chatAgent.js'
 
 const KEYWORD_MAP = {
   matlab: ['matlab', '报错', '矩阵', '仿真', '绘图', 'plot', 'fft', '滤波', '信号处理', '控制系统', '传递函数', 'bode', 'step', 'impulse'],
@@ -42,6 +43,7 @@ const ROUTER_SYSTEM_PROMPT = `你是一个意图分析路由器。根据用户�
 1. matlab - MATLAB 代码调试、优化、解释、执行（关键词：MATLAB、矩阵、仿真、绘图、信号处理）
 2. circuit-report - 电路实验报告生成（关键词：实验报告、电路、测量、误差、数据分析）
 3. fpga - FPGA/单片机代码生成和审查（关键词：Verilog、VHDL、FPGA、单片机、STM32、GPIO）
+4. chat - 日常聊天、查询课表/待办/成绩、创建待办、常识问题（关键词：今天、课表、待办、考试、成绩、帮我记、聊天）
 
 请返回 JSON 格式：
 - 单 Agent 路由：{"type": "single", "agentId": "matlab"}
@@ -89,6 +91,7 @@ const AGENT_HANDLERS = {
   matlab: matlabHandle,
   'circuit-report': circuitReportHandle,
   fpga: fpgaHandle,
+  chat: chatHandle,
 }
 
 export async function routeToAgent(agentId, userInput, context = {}, options = {}) {
@@ -174,10 +177,16 @@ export async function handleMessage(userInput, options = {}) {
     }
   }
 
+  const chatResult = await routeToAgent('chat', userInput, {}, options)
+  if (chatResult.error) {
+    return { error: chatResult.error, message: chatResult.message }
+  }
   return {
-    type: 'unclear',
-    candidates: SUB_AGENTS.map((a) => ({ id: a.id, name: a.shortName, description: a.description })),
-    content: '无法确定您的请求应该由哪个助手处理，请选择一个助手：',
-    routeInfo: { method: 'unclear' },
+    type: 'single',
+    agentId: 'chat',
+    agentName: getAgentById('chat')?.shortName,
+    content: chatResult.content,
+    routeInfo: { method: 'fallback', agentId: 'chat' },
+    createdTodos: chatResult.createdTodos,
   }
 }
