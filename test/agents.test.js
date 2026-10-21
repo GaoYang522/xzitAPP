@@ -130,7 +130,7 @@ describe('routeToAgent', () => {
 
   test('路由到 circuit-report agent', async () => {
     fetch.mockResolvedValue(mockLlmResponse('实验报告内容'))
-    const result = await routeToAgent('circuit-report', '生成报告', {}, { apiKey: 'sk-test' })
+    const result = await routeToAgent('circuit-report', '帮我生成电路实验报告，实验名称：基尔霍夫定律，测量数据：电压5V电流0.5A', {}, { apiKey: 'sk-test' })
     expect(result.content).toBe('实验报告内容')
     expect(result.agentId).toBe('circuit-report')
     expect(result.canExport).toBe(true)
@@ -154,7 +154,7 @@ describe('executeWorkflow', () => {
     fetch
       .mockResolvedValueOnce(mockLlmResponse('代码分析结果'))
       .mockResolvedValueOnce(mockLlmResponse('基于分析的报告'))
-    const result = await executeWorkflow(['matlab', 'circuit-report'], '分析代码并生成报告', { apiKey: 'sk-test' })
+    const result = await executeWorkflow(['matlab', 'circuit-report'], '分析代码并生成报告，实验名称：基尔霍夫定律，测量数据：电压5V电流0.5A', { apiKey: 'sk-test' })
     expect(result.type).toBe('workflow')
     expect(result.steps).toHaveLength(2)
     expect(result.steps[0].agentId).toBe('matlab')

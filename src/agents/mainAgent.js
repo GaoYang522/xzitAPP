@@ -99,7 +99,36 @@ export async function routeToAgent(agentId, userInput, context = {}, options = {
   if (!handler) {
     return { error: 'UNKNOWN_AGENT', message: `未知的子 Agent: ${agentId}` }
   }
+  const completenessCheck = checkDataCompleteness(agentId, userInput)
+  if (completenessCheck) {
+    return completenessCheck
+  }
   return handler(userInput, context, options)
+}
+
+export function checkDataCompleteness(agentId, userInput) {
+  const input = userInput.trim()
+  const hasCodeBlock = input.includes('```') || /\b(function|module|void|int|always|assign)\b/.test(input)
+
+  if (agentId === 'matlab') {
+    if (/调试|报错|修复|优化/.test(input) && input.length < 30 && !hasCodeBlock) {
+      return { content: '请粘贴你的 MATLAB 代码，这样我才能帮你分析。' }
+    }
+  }
+
+  if (agentId === 'circuit-report') {
+    if (/报告|生成报告/.test(input) && input.length < 20) {
+      return { content: '请提供以下信息以便生成实验报告：\n1. 实验名称\n2. 实验测量数据（如电压、电流、电阻等）\n3. 实验目的（可选）' }
+    }
+  }
+
+  if (agentId === 'fpga') {
+    if (/生成|写代码|帮我写/.test(input) && input.length < 20) {
+      return { content: '请描述你需要实现的具体功能，例如：\n- 生成一个 4 位二进制计数器的 Verilog 代码\n- 生成 STM32 串口通信的 C 代码' }
+    }
+  }
+
+  return null
 }
 
 export async function executeWorkflow(steps, userInput, options = {}, context = {}) {
