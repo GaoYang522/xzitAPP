@@ -16,12 +16,32 @@ export async function parseText(file) {
 
 export async function parseImage(file) {
   const Tesseract = await import('tesseract.js')
-  const result = await Tesseract.recognize(file, 'chi_sim+eng')
-  return {
-    type: 'image',
-    content: result.data.text || '',
-    fileName: file.name,
-    fileSize: file.size,
+
+  const options = {
+    langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/1.6.0',
+  }
+
+  try {
+    const result = await Tesseract.recognize(file, 'chi_sim+eng', options)
+    return {
+      type: 'image',
+      content: result.data.text || '',
+      fileName: file.name,
+      fileSize: file.size,
+    }
+  } catch (e) {
+    try {
+      const result = await Tesseract.recognize(file, 'eng', options)
+      return {
+        type: 'image',
+        content: result.data.text || '',
+        fileName: file.name,
+        fileSize: file.size,
+        warning: '中文OCR失败，已回退到英文OCR',
+      }
+    } catch (e2) {
+      throw new Error(`图片OCR失败: ${e2.message}`)
+    }
   }
 }
 
@@ -78,12 +98,16 @@ export async function parseFile(file) {
         }
     }
   } catch (e) {
+    let errorMsg = `文件解析失败: ${e.message}`
+    if (type === 'image') {
+      errorMsg = `图片OCR识别失败: ${e.message}。请确保网络可用，Tesseract需要从CDN下载语言数据。`
+    }
     return {
       type,
       content: '',
       fileName: file.name,
       fileSize: file.size,
-      error: `文件解析失败: ${e.message}`,
+      error: errorMsg,
     }
   }
 }

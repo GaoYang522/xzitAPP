@@ -1,5 +1,11 @@
-import { describe, test, expect } from 'vitest'
-import { getFileType, parseText, parseFile } from '../src/utils/fileParser.js'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('tesseract.js', () => ({
+  recognize: vi.fn(),
+}))
+
+import { getFileType, parseText, parseFile, parseImage } from '../src/utils/fileParser.js'
+import { recognize } from 'tesseract.js'
 
 function createMockFile(name, content, type = '') {
   const encoder = new TextEncoder()
@@ -72,6 +78,49 @@ describe('parseFile 路由', () => {
     const result = await parseFile(file)
     expect(result.type).toBe('unknown')
     expect(result.error).toBeTruthy()
+    expect(result.content).toBe('')
+  })
+})
+describe('parseImage OCR回退', () => {
+  beforeEach(() => {
+    recognize.mockReset()
+  })
+
+  test('中文+英文OCR成功', async () => {
+    recognize.mockResolvedValue({ data: { text: 'OCR识别文字' } })
+    const file = createMockFile('test.png', '', 'image/png')
+    const result = await parseImage(file)
+    expect(result.type).toBe('image')
+    expect(result.content).toBe('OCR识别文字')
+    expect(recognize).toHaveBeenCalledWith(file, 'chi_sim+eng', expect.objectContaining({
+      langPath: expect.any(String),
+    }))
+  })
+
+  test('中文失败回退到英文', async () => {
+    recognize
+      .mockRejectedValueOnce(new Error('chi_sim download failed'))
+      .mockResolvedValueOnce({ data: { text: 'English text' } })
+    const file = createMockFile('test.png', '', 'image/png')
+    const result = await parseImage(file)
+    expect(result.content).toBe('English text')
+    expect(result.warning).toContain('回退')
+    expect(recognize).toHaveBeenCalledTimes(2)
+    expect(recognize).toHaveBeenNthCalledWith(2, file, 'eng', expect.any(Object))
+  })
+
+  test('两种语言都失败抛出错误', async () => {
+    recognize.mockRejectedValue(new Error('network error'))
+    const file = createMockFile('test.png', '', 'image/png')
+    await expect(parseImage(file)).rejects.toThrow('图片OCR失败')
+  })
+
+  test('parseFile图片错误给出具体提示', async () => {
+    recognize.mockRejectedValue(new Error('network error'))
+    const file = createMockFile('test.png', '', 'image/png')
+    const result = await parseFile(file)
+    expect(result.type).toBe('image')
+    expect(result.error).toContain('OCR')
     expect(result.content).toBe('')
   })
 })
