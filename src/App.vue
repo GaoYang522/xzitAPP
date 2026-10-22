@@ -1,11 +1,15 @@
 <script setup>
-import { watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useSettingsStore } from './stores/settings'
-import { Home, BookOpen, Coffee, Users, Heart, Wrench, Bot, Settings } from 'lucide-vue-next'
+import { useAuthStore } from './stores/auth'
+import { saveUserData } from './utils/userData'
+import { Home, BookOpen, Coffee, Users, Heart, Wrench, Bot, Settings, LogOut, User } from 'lucide-vue-next'
 
 const route = useRoute()
+const router = useRouter()
 const settings = useSettingsStore()
+const auth = useAuthStore()
 
 const navItems = [
   { path: '/', label: '首页', icon: Home },
@@ -17,6 +21,16 @@ const navItems = [
   { path: '/assistant', label: '助手', icon: Bot },
   { path: '/settings', label: '设置', icon: Settings },
 ]
+
+const showNav = computed(() => route.name !== 'login')
+
+function handleLogout() {
+  if (auth.currentUser) {
+    saveUserData(auth.currentUser)
+  }
+  auth.logout()
+  router.push('/login')
+}
 
 watch(
   () => settings.theme,
@@ -30,6 +44,7 @@ watch(
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
     <nav
+      v-if="showNav"
       class="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700"
     >
       <div class="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
@@ -49,12 +64,25 @@ watch(
             <span>{{ item.label }}</span>
           </router-link>
         </div>
-        <button
-          @click="settings.toggleTheme()"
-          class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-lg"
-        >
-          {{ settings.theme === 'light' ? '🌙' : '☀️' }}
-        </button>
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-sm text-gray-600 dark:text-gray-300">
+            <User class="w-4 h-4" />
+            <span>{{ auth.currentUser }}</span>
+          </div>
+          <button
+            @click="settings.toggleTheme()"
+            class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-lg"
+          >
+            {{ settings.theme === 'light' ? '🌙' : '☀️' }}
+          </button>
+          <button
+            @click="handleLogout"
+            class="p-2 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-500 dark:text-gray-400 hover:text-red-500"
+            title="登出"
+          >
+            <LogOut class="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </nav>
     <main class="max-w-6xl mx-auto px-4 py-6">
