@@ -45,7 +45,7 @@ watch(
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
     <nav
       v-if="showNav"
-      class="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700"
+      class="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 hidden md:block"
     >
       <div class="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
         <div class="flex items-center gap-1">
@@ -85,8 +85,31 @@ watch(
         </div>
       </div>
     </nav>
-    <main class="max-w-6xl mx-auto px-4 py-6">
+
+    <main class="max-w-6xl mx-auto px-4 py-6 pb-24 md:pb-6">
       <router-view />
     </main>
+
+    <nav
+      v-if="showNav"
+      class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 md:hidden"
+    >
+      <div class="flex items-center justify-around h-16 overflow-x-auto">
+        <router-link
+          v-for="item in navItems"
+          :key="item.path"
+          :to="item.path"
+          class="flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-lg text-xs flex-shrink-0 transition-all"
+          :class="
+            route.path === item.path
+              ? 'text-blue-500 font-medium'
+              : 'text-gray-400'
+          "
+        >
+          <component :is="item.icon" class="w-5 h-5" />
+          <span>{{ item.label }}</span>
+        </router-link>
+      </div>
+    </nav>
   </div>
 </template>
