@@ -2,8 +2,13 @@
 import { ref, computed, onUnmounted, watch } from 'vue'
 import { usePomodoroStore } from '../../stores/pomodoro.js'
 import { Play, Pause, RotateCcw, Coffee, Brain, Settings as SettingsIcon, Check } from 'lucide-vue-next'
+import BaseChart from '../charts/BaseChart.vue'
+import { buildPomodoroStatsOption } from '../../utils/chartOptions.js'
+
 
 const store = usePomodoroStore()
+
+const chartOption = computed(() => buildPomodoroStatsOption(store.sessions))
 
 const phase = ref('idle')
 const remainingSeconds = ref(0)
@@ -201,6 +206,11 @@ onUnmounted(() => {
         <div class="text-2xl font-bold text-green-500">{{ store.weekTotalMinutes }}</div>
         <div class="text-xs text-gray-400">本周分钟</div>
       </div>
+    </div>
+
+    <div class="mt-4">
+      <h4 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">近7天专注统计</h4>
+      <BaseChart :option="chartOption" height="200px" />
     </div>
   </div>
 </template>

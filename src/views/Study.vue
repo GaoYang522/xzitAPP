@@ -1,10 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import CourseManager from '../components/study/CourseManager.vue'
 import HomeworkManager from '../components/study/HomeworkManager.vue'
 import ExamManager from '../components/study/ExamManager.vue'
 import GradeManager from '../components/study/GradeManager.vue'
+import BaseChart from '../components/charts/BaseChart.vue'
+import { buildGradeTrendOption } from '../utils/chartOptions.js'
+import { useStudyStore } from '../stores/study'
 
+const study = useStudyStore()
 const activeTab = ref('course')
 const tabs = [
   { key: 'course', label: '课表', icon: '📚' },
@@ -12,6 +16,8 @@ const tabs = [
   { key: 'exam', label: '考试', icon: '📋' },
   { key: 'grade', label: '成绩', icon: '🏆' },
 ]
+
+const gradeChartOption = computed(() => buildGradeTrendOption(study.grades))
 </script>
 
 <template>
@@ -35,6 +41,12 @@ const tabs = [
     <CourseManager v-if="activeTab === 'course'" />
     <HomeworkManager v-else-if="activeTab === 'homework'" />
     <ExamManager v-else-if="activeTab === 'exam'" />
-    <GradeManager v-else-if="activeTab === 'grade'" />
+    <div v-else-if="activeTab === 'grade'">
+      <GradeManager />
+      <div class="mt-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4">
+        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">成绩趋势</h3>
+        <BaseChart :option="gradeChartOption" height="250px" />
+      </div>
+    </div>
   </div>
 </template>

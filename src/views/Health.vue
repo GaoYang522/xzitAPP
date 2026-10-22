@@ -1,10 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import CheckinManager from '../components/health/CheckinManager.vue'
 import FitnessManager from '../components/health/FitnessManager.vue'
 import ExerciseManager from '../components/health/ExerciseManager.vue'
 import MoodManager from '../components/health/MoodManager.vue'
+import BaseChart from '../components/charts/BaseChart.vue'
+import { buildExerciseStatsOption, buildMoodTrendOption } from '../utils/chartOptions.js'
+import { useHealthStore } from '../stores/health'
 
+const health = useHealthStore()
 const activeTab = ref('checkin')
 const tabs = [
   { key: 'checkin', label: '打卡', icon: '📝' },
@@ -12,6 +16,9 @@ const tabs = [
   { key: 'exercise', label: '运动', icon: '🏃' },
   { key: 'mood', label: '心情', icon: '😊' },
 ]
+
+const exerciseChartOption = computed(() => buildExerciseStatsOption(health.exercises))
+const moodChartOption = computed(() => buildMoodTrendOption(health.moods))
 </script>
 
 <template>
@@ -34,7 +41,19 @@ const tabs = [
     </div>
     <CheckinManager v-if="activeTab === 'checkin'" />
     <FitnessManager v-else-if="activeTab === 'fitness'" />
-    <ExerciseManager v-else-if="activeTab === 'exercise'" />
-    <MoodManager v-else-if="activeTab === 'mood'" />
+    <div v-else-if="activeTab === 'exercise'">
+      <ExerciseManager />
+      <div class="mt-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4">
+        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">近7天运动统计</h3>
+        <BaseChart :option="exerciseChartOption" height="250px" />
+      </div>
+    </div>
+    <div v-else-if="activeTab === 'mood'">
+      <MoodManager />
+      <div class="mt-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4">
+        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">心情趋势</h3>
+        <BaseChart :option="moodChartOption" height="250px" />
+      </div>
+    </div>
   </div>
 </template>
