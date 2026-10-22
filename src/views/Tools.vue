@@ -4,6 +4,7 @@ import TodoManager from '../components/tools/TodoManager.vue'
 import NoteManager from '../components/tools/NoteManager.vue'
 import CountdownManager from '../components/tools/CountdownManager.vue'
 import HabitManager from '../components/tools/HabitManager.vue'
+import PomodoroTimer from '../components/tools/PomodoroTimer.vue'
 
 const activeTab = ref('todo')
 const tabs = [
@@ -11,13 +12,14 @@ const tabs = [
   { key: 'note', label: '备忘录', icon: '📒' },
   { key: 'countdown', label: '倒计时', icon: '⏰' },
   { key: 'habit', label: '习惯', icon: '🔥' },
+  { key: 'pomodoro', label: '番茄钟', icon: '🍅' },
 ]
 </script>
 
 <template>
   <div>
     <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">工具备忘</h1>
-    <div class="flex gap-2 mb-6">
+    <div class="flex gap-2 mb-6 flex-wrap">
       <button
         v-for="tab in tabs"
         :key="tab.key"
@@ -36,5 +38,6 @@ const tabs = [
     <NoteManager v-else-if="activeTab === 'note'" />
     <CountdownManager v-else-if="activeTab === 'countdown'" />
     <HabitManager v-else-if="activeTab === 'habit'" />
+    <PomodoroTimer v-else-if="activeTab === 'pomodoro'" />
   </div>
 </template>
