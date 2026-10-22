@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, computed } from 'vue'
+import { ref, nextTick, computed, watch } from 'vue'
 import { useAssistantStore } from '../../stores/assistant.js'
 import { Send, Loader2, MessageSquare, Paperclip, X, FileText } from 'lucide-vue-next'
 import ChatMessage from './ChatMessage.vue'
@@ -17,8 +17,20 @@ const selectedFile = ref(null)
 const parsedContent = ref(null)
 const parsing = ref(false)
 const fileError = ref(null)
+const textareaRef = ref(null)
 
 const messages = computed(() => store.currentSession?.messages || [])
+
+function autoResize() {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = Math.min(Math.max(el.scrollHeight, 44), 200) + 'px'
+}
+
+watch(input, () => {
+  nextTick(autoResize)
+})
 
 async function send() {
   if ((!input.value.trim() && !parsedContent.value) || loading.value) return
@@ -30,6 +42,7 @@ async function send() {
   parsedContent.value = null
   fileError.value = null
   loading.value = true
+  nextTick(autoResize)
   try {
     await store.sendMessage(text, { fileContent, fileName })
   } finally {
@@ -166,11 +179,13 @@ function startNewSession() {
         <Paperclip class="w-5 h-5 text-gray-500" />
       </button>
       <textarea
+        ref="textareaRef"
         v-model="input"
         @keydown="handleKeydown"
+        @input="autoResize"
         placeholder="输入你的问题...（Enter 发送，Shift+Enter 换行）"
-        rows="2"
-        class="flex-1 px-4 py-2 rounded-xl2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 resize-none focus:outline-none focus:border-blue-400"
+        class="flex-1 px-4 py-2 rounded-xl2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 resize-none focus:outline-none focus:border-blue-400 overflow-y-auto"
+        style="height: 44px; min-height: 44px; max-height: 200px;"
       />
       <button
         @click="send"

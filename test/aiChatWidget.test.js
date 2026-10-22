@@ -19,7 +19,16 @@ describe('AiChatWidget', () => {
     const wrapper = mount(AiChatWidget, {
       global: { stubs: { 'router-link': true, 'router-view': true } },
     })
-    expect(wrapper.find('input').exists()).toBe(true)
+    expect(wrapper.find('textarea').exists()).toBe(true)
+  })
+
+  test('输入框有动态高度样式', () => {
+    const wrapper = mount(AiChatWidget, {
+      global: { stubs: { 'router-link': true, 'router-view': true } },
+    })
+    const textarea = wrapper.find('textarea')
+    expect(textarea.attributes('style')).toContain('min-height')
+    expect(textarea.attributes('style')).toContain('max-height')
   })
 
   test('渲染发送按钮', () => {

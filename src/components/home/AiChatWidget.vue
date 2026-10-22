@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAssistantStore } from '../../stores/assistant.js'
 import { Bot, Send, Loader2, ExternalLink, Navigation } from 'lucide-vue-next'
@@ -10,10 +10,22 @@ const store = useAssistantStore()
 const input = ref('')
 const loading = ref(false)
 const messagesContainer = ref(null)
+const textareaRef = ref(null)
 
 const recentMessages = computed(() => {
   if (!store.currentSession) return []
   return store.currentSession.messages.slice(-6)
+})
+
+function autoResize() {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = Math.min(Math.max(el.scrollHeight, 40), 160) + 'px'
+}
+
+watch(input, () => {
+  nextTick(autoResize)
 })
 
 async function send() {
@@ -21,6 +33,7 @@ async function send() {
   const text = input.value.trim()
   input.value = ''
   loading.value = true
+  nextTick(autoResize)
   try {
     await store.sendMessage(text)
   } finally {
@@ -82,11 +95,15 @@ function goToFullChat() {
     </div>
 
     <div class="flex gap-2">
-      <input
+      <textarea
+        ref="textareaRef"
         v-model="input"
         @keydown="handleKeydown"
+        @input="autoResize"
         placeholder="输入你的问题..."
-        class="flex-1 px-4 py-2 rounded-xl2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:border-purple-400"
+        rows="1"
+        class="flex-1 px-4 py-2 rounded-xl2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:border-purple-400 resize-none overflow-y-auto"
+        style="height: 40px; min-height: 40px; max-height: 160px;"
       />
       <button
         @click="send"

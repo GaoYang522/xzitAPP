@@ -198,6 +198,18 @@ describe('ChatInterface', () => {
     const wrapper = mount(ChatInterface)
     expect(wrapper.text()).toContain('开始与 AI 助手对话')
   })
+
+  test('textarea有动态高度样式', () => {
+    const wrapper = mount(ChatInterface)
+    const textarea = wrapper.find('textarea')
+    expect(textarea.attributes('style')).toContain('min-height')
+    expect(textarea.attributes('style')).toContain('max-height')
+  })
+
+  test('渲染文件上传按钮', () => {
+    const wrapper = mount(ChatInterface)
+    expect(wrapper.find('input[type="file"]').exists()).toBe(true)
+  })
 })
 
 describe('Assistant 页面', () => {
