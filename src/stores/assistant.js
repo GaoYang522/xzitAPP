@@ -68,6 +68,11 @@ export const useAssistantStore = defineStore('assistant', {
       }
       const session = this.currentSession
 
+      const history = session.messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }))
+
       const userMessage = {
         role: 'user',
         content: text,
@@ -81,7 +86,7 @@ export const useAssistantStore = defineStore('assistant', {
       }
 
       const options = getLlmOptions(this.apiConfig)
-      const context = {}
+      const context = { history }
       if (fileContent) context.fileContent = fileContent
       const result = await handleMessage(text, options, context)
 

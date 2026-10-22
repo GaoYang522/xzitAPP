@@ -1,12 +1,15 @@
 import { chatWithLLM } from '../utils/llmProvider.js'
 import { executeC, checkVerilog } from '../utils/codeExecutor.js'
 import { getAgentById } from './agentConfig.js'
+import { buildHistoryMessages } from '../utils/chatHistory.js'
 
 export async function handle(userInput, context = {}, options = {}) {
   const agent = getAgentById('fpga')
   const messages = [
     { role: 'system', content: agent.systemPrompt },
   ]
+
+  messages.push(...buildHistoryMessages(context.history))
 
   if (context.previousResult) {
     messages.push({ role: 'user', content: `之前的分析结果：\n${context.previousResult}` })

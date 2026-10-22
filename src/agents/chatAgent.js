@@ -1,6 +1,7 @@
 import { chatWithLLM } from '../utils/llmProvider.js'
 import { getAppDataSummary } from '../utils/appDataContext.js'
 import { useToolsStore } from '../stores/tools.js'
+import { buildHistoryMessages } from '../utils/chatHistory.js'
 
 const TODO_REGEX = /\[CREATE_TODO:(\{[^}]+\})\]/g
 
@@ -56,6 +57,8 @@ ${dataSummary}
   const messages = [
     { role: 'system', content: systemPrompt },
   ]
+
+  messages.push(...buildHistoryMessages(context.history))
 
   if (context.previousResult) {
     messages.push({ role: 'assistant', content: context.previousResult })
