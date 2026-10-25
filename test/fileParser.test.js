@@ -123,4 +123,26 @@ describe('parseImage OCR回退', () => {
     expect(result.error).toContain('OCR')
     expect(result.content).toBe('')
   })
+
+  test('错误对象无message时不显示undefined', async () => {
+    recognize.mockRejectedValue('string error')
+    const file = createMockFile('test.png', '', 'image/png')
+    await expect(parseImage(file)).rejects.toThrow('图片OCR失败')
+  })
+
+  test('错误对象为null时不显示undefined', async () => {
+    recognize.mockRejectedValue(null)
+    const file = createMockFile('test.png', '', 'image/png')
+    await expect(parseImage(file)).rejects.toThrow('未知错误')
+  })
+
+  test('options包含corePath配置', async () => {
+    recognize.mockResolvedValue({ data: { text: 'text' } })
+    const file = createMockFile('test.png', '', 'image/png')
+    await parseImage(file)
+    expect(recognize).toHaveBeenCalledWith(file, 'chi_sim+eng', expect.objectContaining({
+      corePath: expect.any(String),
+      langPath: expect.any(String),
+    }))
+  })
 })

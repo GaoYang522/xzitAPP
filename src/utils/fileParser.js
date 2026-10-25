@@ -18,7 +18,13 @@ export async function parseImage(file) {
   const Tesseract = await import('tesseract.js')
 
   const options = {
-    langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/1.6.0',
+    langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data@1.6.0',
+    corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0',
+  }
+
+  function getErrorMsg(e) {
+    if (!e) return '未知错误'
+    return e.message || e.toString() || '未知错误'
   }
 
   try {
@@ -40,7 +46,7 @@ export async function parseImage(file) {
         warning: '中文OCR失败，已回退到英文OCR',
       }
     } catch (e2) {
-      throw new Error(`图片OCR失败: ${e2.message}`)
+      throw new Error(`图片OCR失败: ${getErrorMsg(e2)}`)
     }
   }
 }
