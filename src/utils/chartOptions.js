@@ -77,10 +77,10 @@ export function buildMoodTrendOption(moods) {
   if (!moods || moods.length === 0) {
     return { title: { text: '暂无心情数据', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } } }
   }
-  const moodMap = { '😊': 5, '🙂': 4, '😐': 3, '😕': 2, '😢': 1 }
-  const last7 = moods.slice(-7)
+  const sorted = [...moods].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+  const last7 = sorted.slice(-7)
   const dates = last7.map((m) => (m.date || '').slice(5))
-  const values = last7.map((m) => moodMap[m.mood] || Number(m.score) || 3)
+  const values = last7.map((m) => Number(m.mood) || 3)
   return {
     tooltip: {
       trigger: 'axis',

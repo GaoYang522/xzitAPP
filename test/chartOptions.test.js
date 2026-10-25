@@ -87,12 +87,23 @@ describe('buildExerciseStatsOption', () => {
 describe('buildMoodTrendOption', () => {
   test('生成心情趋势折线图', () => {
     const moods = [
-      { date: '2026-10-20', mood: '😊' },
-      { date: '2026-10-21', mood: '😐' },
-      { date: '2026-10-22', mood: '🙂' },
+      { date: '2026-10-20', mood: 5 },
+      { date: '2026-10-21', mood: 3 },
+      { date: '2026-10-22', mood: 4 },
     ]
     const option = buildMoodTrendOption(moods)
     expect(option.series[0].type).toBe('line')
+    expect(option.series[0].data).toEqual([5, 3, 4])
+  })
+
+  test('按日期排序', () => {
+    const moods = [
+      { date: '2026-10-22', mood: 4 },
+      { date: '2026-10-20', mood: 5 },
+      { date: '2026-10-21', mood: 3 },
+    ]
+    const option = buildMoodTrendOption(moods)
+    expect(option.xAxis.data).toEqual(['10-20', '10-21', '10-22'])
     expect(option.series[0].data).toEqual([5, 3, 4])
   })
 

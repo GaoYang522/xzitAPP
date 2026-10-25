@@ -35,6 +35,11 @@ function save() {
 }
 
 const moodEmojis = { 1: '😢', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' }
+
+function selectMood(n) {
+  form.value.mood = n
+  form.value.stress = 6 - n
+}
 </script>
 
 <template>
@@ -73,7 +78,7 @@ const moodEmojis = { 1: '😢', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' }
         <div>
           <label class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">心情</label>
           <div class="flex gap-2">
-            <button v-for="n in 5" :key="n" @click="form.mood = n" :class="['w-12 h-12 rounded-xl text-2xl transition-all', form.mood === n ? 'bg-grad-blue scale-110' : 'bg-gray-100 dark:bg-gray-700']">{{ moodEmojis[n] }}</button>
+            <button v-for="n in 5" :key="n" @click="selectMood(n)" :class="['w-12 h-12 rounded-xl text-2xl transition-all', form.mood === n ? 'bg-grad-blue scale-110' : 'bg-gray-100 dark:bg-gray-700']">{{ moodEmojis[n] }}</button>
           </div>
         </div>
         <div>
