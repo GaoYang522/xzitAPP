@@ -16,13 +16,23 @@ const form = ref({ subject: '', content: '', deadline: '', priority: 'medium', d
 
 const subjects = computed(() => [...new Set(study.homework.map((h) => h.subject))])
 
+const priorityColors = { high: 'red', medium: 'orange', low: 'green' }
+const priorityLabels = { high: '高', medium: '中', low: '低' }
+const priorityOrder = { high: 3, medium: 2, low: 1 }
+
 const filtered = computed(() => {
   return study.homework.filter((h) => {
     if (filterSubject.value && h.subject !== filterSubject.value) return false
     if (filterStatus.value === 'done' && !h.done) return false
     if (filterStatus.value === 'undone' && h.done) return false
     return true
-  }).sort((a, b) => (a.done - b.done) || new Date(a.deadline || '9999') - new Date(b.deadline || '9999'))
+  }).sort((a, b) => {
+    if (a.done !== b.done) return a.done - b.done
+    const pa = priorityOrder[a.priority] || 2
+    const pb = priorityOrder[b.priority] || 2
+    if (pa !== pb) return pb - pa
+    return new Date(a.deadline || '9999') - new Date(b.deadline || '9999')
+  })
 })
 
 function openAdd() {
@@ -41,8 +51,7 @@ function save() {
   else study.addHomework(form.value)
   showForm.value = false
 }
-const priorityColors = { high: 'red', medium: 'orange', low: 'green' }
-const priorityLabels = { high: '高', medium: '中', low: '低' }
+
 </script>
 
 <template>
