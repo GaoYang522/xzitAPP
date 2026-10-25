@@ -48,9 +48,15 @@ export function buildExerciseStatsOption(exercises) {
   if (!exercises || exercises.length === 0) {
     return { title: { text: '暂无运动数据', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } } }
   }
-  const last7 = exercises.slice(-7)
-  const dates = last7.map((e) => (e.date || '').slice(5))
-  const durations = last7.map((e) => Number(e.duration || 0))
+  const byDate = {}
+  for (const e of exercises) {
+    const date = (e.date || '').slice(0, 10)
+    if (!date) continue
+    byDate[date] = (byDate[date] || 0) + Number(e.duration || 0)
+  }
+  const sortedDates = Object.keys(byDate).sort().slice(-7)
+  const dates = sortedDates.map((d) => d.slice(5))
+  const durations = sortedDates.map((d) => byDate[d])
   return {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: dates },

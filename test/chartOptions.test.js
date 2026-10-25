@@ -56,6 +56,28 @@ describe('buildExerciseStatsOption', () => {
     expect(option.series[0].data).toEqual([30, 45, 60])
   })
 
+  test('同一天运动时间合并', () => {
+    const exercises = [
+      { date: '2026-10-20', duration: 30 },
+      { date: '2026-10-20', duration: 25 },
+      { date: '2026-10-21', duration: 45 },
+    ]
+    const option = buildExerciseStatsOption(exercises)
+    expect(option.xAxis.data).toEqual(['10-20', '10-21'])
+    expect(option.series[0].data).toEqual([55, 45])
+  })
+
+  test('按日期排序取最近7天', () => {
+    const exercises = []
+    for (let i = 1; i <= 10; i++) {
+      exercises.push({ date: `2026-10-${String(i).padStart(2, '0')}`, duration: 10 })
+    }
+    const option = buildExerciseStatsOption(exercises)
+    expect(option.xAxis.data).toHaveLength(7)
+    expect(option.xAxis.data[0]).toBe('10-04')
+    expect(option.xAxis.data[6]).toBe('10-10')
+  })
+
   test('空数据显示提示', () => {
     const option = buildExerciseStatsOption([])
     expect(option.title.text).toContain('暂无')
