@@ -10,7 +10,20 @@ import AppCard from '../common/AppCard.vue'
 const health = useHealthStore()
 const showForm = ref(false)
 const editingId = ref(null)
-const form = ref({ date: '', type: '', duration: 0, distance: '', note: '' })
+const form = ref({ date: '', type: '', duration: 0, distance: '', unit: 'km', note: '' })
+
+const unitOptions = [
+  { value: 'km', label: '公里(km)' },
+  { value: 'm', label: '米(m)' },
+  { value: '次', label: '次' },
+  { value: '个', label: '个' },
+  { value: '组', label: '组' },
+]
+
+const distanceLabel = computed(() => {
+  const u = unitOptions.find((o) => o.value === form.value.unit)
+  return u ? u.label : '距离/数量'
+})
 
 const sorted = computed(() =>
   [...health.exercises].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
@@ -22,8 +35,14 @@ function getStats(days) {
   start.setDate(now.getDate() - days)
   const items = health.exercises.filter((e) => new Date(e.date) >= start)
   const totalDuration = items.reduce((sum, e) => sum + Number(e.duration || 0), 0)
-  const totalDistance = items.reduce((sum, e) => sum + Number(e.distance || 0), 0)
-  return { totalDuration, totalDistance: totalDistance.toFixed(1) }
+  const byUnit = {}
+  for (const e of items) {
+    if (!e.distance) continue
+    const u = e.unit || 'km'
+    byUnit[u] = (byUnit[u] || 0) + Number(e.distance || 0)
+  }
+  const distanceTexts = Object.entries(byUnit).map(([u, v]) => `${v.toFixed(1)} ${u}`)
+  return { totalDuration, distanceText: distanceTexts.join(' / ') || '0 km' }
 }
 
 const weekStats = computed(() => getStats(7))
@@ -31,7 +50,7 @@ const monthStats = computed(() => getStats(30))
 
 function openAdd() {
   editingId.value = null
-  form.value = { date: formatDate(new Date()), type: '', duration: 0, distance: '', note: '' }
+  form.value = { date: formatDate(new Date()), type: '', duration: 0, distance: '', unit: 'km', note: '' }
   showForm.value = true
 }
 function openEdit(item) {
@@ -60,14 +79,14 @@ function save() {
         <div class="text-center">
           <p class="text-sm text-gray-500 mb-1">本周</p>
           <p class="text-2xl font-bold text-green-500">{{ weekStats.totalDuration }} 分钟</p>
-          <p class="text-sm text-gray-400">{{ weekStats.totalDistance }} km</p>
+          <p class="text-sm text-gray-400">{{ weekStats.distanceText }}</p>
         </div>
       </AppCard>
       <AppCard>
         <div class="text-center">
           <p class="text-sm text-gray-500 mb-1">本月</p>
           <p class="text-2xl font-bold text-blue-500">{{ monthStats.totalDuration }} 分钟</p>
-          <p class="text-sm text-gray-400">{{ monthStats.totalDistance }} km</p>
+          <p class="text-sm text-gray-400">{{ monthStats.distanceText }}</p>
         </div>
       </AppCard>
     </div>
@@ -82,7 +101,7 @@ function save() {
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="text-green-500">{{ item.duration }} 分钟</span>
-          <span v-if="item.distance" class="text-blue-500">{{ item.distance }} km</span>
+          <span v-if="item.distance" class="text-blue-500">{{ item.distance }} {{ item.unit || 'km' }}</span>
         </div>
       </div>
     </div>
@@ -103,8 +122,13 @@ function save() {
             <input type="number" min="0" v-model="form.duration" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">距离(km)</label>
-            <input type="number" step="0.1" v-model="form.distance" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white" />
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">距离/数量</label>
+            <div class="flex gap-2">
+              <input type="number" step="0.1" v-model="form.distance" class="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white" />
+              <select v-model="form.unit" class="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
+                <option v-for="opt in unitOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
           </div>
         </div>
         <div>
