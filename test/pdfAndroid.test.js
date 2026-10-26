@@ -5,7 +5,8 @@ describe('PDF Worker Android兼容', () => {
     vi.stubGlobal('capacitor', { isNative: true })
     vi.resetModules()
 
-    const { pdfjsLib, PDF_CDN_BASE } = await import('../src/utils/pdfWorkerSetup.js')
+    const { pdfjsLib, PDF_CDN_BASE, ensureWorker } = await import('../src/utils/pdfWorkerSetup.js')
+    await ensureWorker()
     expect(pdfjsLib.GlobalWorkerOptions.workerSrc).toContain('cdn.jsdelivr.net')
     expect(pdfjsLib.GlobalWorkerOptions.workerSrc).toContain('pdf.worker')
     expect(PDF_CDN_BASE).toContain('cdn.jsdelivr.net')

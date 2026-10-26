@@ -392,7 +392,8 @@ export function extractSectionTimes(pagesItems) {
 
 // 顶层函数：读取 PDF 文件并解析课表
 export async function parsePdfSchedule(file) {
-  const { pdfjsLib, PDF_CDN_BASE } = await import('./pdfWorkerSetup.js')
+  const { pdfjsLib, PDF_CDN_BASE, ensureWorker } = await import('./pdfWorkerSetup.js')
+  await ensureWorker()
   const arrayBuffer = await file.arrayBuffer()
   const loadingTask = pdfjsLib.getDocument({
     data: new Uint8Array(arrayBuffer),
