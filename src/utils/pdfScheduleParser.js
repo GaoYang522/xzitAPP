@@ -390,26 +390,151 @@ export function extractSectionTimes(pagesItems) {
   return times
 }
 
+// 从 OCR 识别结果构建 textContent items（纯函数，可测试）
+// ocrWords: [{ text, bbox: { x0, y0, x1, y1 } }]
+// scale: 渲染时的缩放倍数，用于将 OCR 坐标转回原始 PDF 坐标
+export function buildItemsFromOcrWords(ocrWords, scale = 2) {
+  if (!ocrWords || !Array.isArray(ocrWords)) return []
+  const items = []
+  for (const word of ocrWords) {
+    if (!word.text || !word.text.trim()) continue
+    if (!word.bbox) continue
+    items.push({
+      str: word.text,
+      x: word.bbox.x0 / scale,
+      y: word.bbox.y0 / scale,
+    })
+  }
+  return items
+}
+
+// 合并多个 Canvas 为一张大图（垂直拼接）
+// canvases: [{ canvas, width, height }]
+// 返回合并后的 canvas
+export function mergeCanvases(canvases) {
+  if (!canvases || canvases.length === 0) return null
+  if (canvases.length === 1) return canvases[0].canvas
+
+  const maxWidth = Math.max(...canvases.map((c) => c.width))
+  const totalHeight = canvases.reduce((sum, c) => sum + c.height, 0)
+
+  const merged = document.createElement('canvas')
+  merged.width = maxWidth
+  merged.height = totalHeight
+  const ctx = merged.getContext('2d')
+
+  let yOffset = 0
+  for (const { canvas, width, height } of canvases) {
+    ctx.drawImage(canvas, 0, yOffset, width, height)
+    yOffset += height
+  }
+  return merged
+}
+
+// OCR 回退：将 PDF 页面渲染为 Canvas 并用 Tesseract.js 识别文字
+// renderFn: (page, viewport) => Promise<canvas>，浏览器端用 page.render，测试中可注入 mock
+// recognizeFn: (canvas, lang, options) => Promise<result>，浏览器端用 Tesseract.recognize
+// opts.mergePages: true 时将多页合并为一张大图后一次性 OCR
+// opts.mergeFn: 自定义合并函数，测试中可注入 mock
+export async function ocrPdfPages(pages, renderFn, recognizeFn, opts = {}) {
+  const Tesseract = await import('tesseract.js')
+  const tessOptions = {
+    langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data@1.6.0',
+    corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0',
+  }
+  const recognize = recognizeFn || Tesseract.recognize
+  const scale = 2
+
+  if (opts.mergePages && pages.length > 1) {
+    const renderedCanvases = []
+    for (const { page, viewport } of pages) {
+      const renderViewport = page.getViewport({ scale })
+      const canvas = await renderFn(page, renderViewport)
+      renderedCanvases.push({ canvas, width: renderViewport.width, height: renderViewport.height })
+    }
+
+    const mergeFn = opts.mergeFn || mergeCanvases
+    const mergedCanvas = mergeFn(renderedCanvases)
+    let result
+    try {
+      result = await recognize(mergedCanvas, 'chi_sim+eng', tessOptions)
+    } catch (e) {
+      result = await recognize(mergedCanvas, 'eng', tessOptions)
+    }
+    const words = result.data.words || []
+    const items = buildItemsFromOcrWords(words, scale)
+    return [items]
+  }
+
+  const allPageItems = []
+  for (const { page, viewport } of pages) {
+    const renderViewport = page.getViewport({ scale })
+    const canvas = await renderFn(page, renderViewport)
+    let result
+    try {
+      result = await recognize(canvas, 'chi_sim+eng', tessOptions)
+    } catch (e) {
+      result = await recognize(canvas, 'eng', tessOptions)
+    }
+    const words = result.data.words || []
+    const items = buildItemsFromOcrWords(words, scale)
+    allPageItems.push(items)
+  }
+  return allPageItems
+}
+
+// 浏览器端渲染函数：将 PDF 页面渲染到 Canvas
+async function renderPageToCanvas(page, viewport) {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  canvas.width = viewport.width
+  canvas.height = viewport.height
+  await page.render({ canvasContext: ctx, viewport }).promise
+  return canvas
+}
+
 // 顶层函数：读取 PDF 文件并解析课表
 export async function parsePdfSchedule(file) {
-  const { pdfjsLib, PDF_CDN_BASE, ensureWorker } = await import('./pdfWorkerSetup.js')
+  const { pdfjsLib, ensureWorker, getCMapUrl, getStandardFontDataUrl } = await import('./pdfWorkerSetup.js')
   await ensureWorker()
   const arrayBuffer = await file.arrayBuffer()
   const loadingTask = pdfjsLib.getDocument({
     data: new Uint8Array(arrayBuffer),
-    cMapUrl: `${PDF_CDN_BASE}/cmaps/`,
+    cMapUrl: getCMapUrl(),
     cMapPacked: true,
-    standardFontDataUrl: `${PDF_CDN_BASE}/standard_fonts/`,
+    standardFontDataUrl: getStandardFontDataUrl(),
   })
   const pdf = await loadingTask.promise
 
   const pagesData = []
+  let totalTextItems = 0
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i)
     const viewport = page.getViewport({ scale: 1 })
     const textContent = await page.getTextContent()
     const items = normalizeItems(textContent.items, viewport.height)
-    pagesData.push({ items, width: viewport.width, height: viewport.height })
+    totalTextItems += items.length
+    pagesData.push({ items, width: viewport.width, height: viewport.height, page, viewport })
+  }
+
+  // 文本提取失败时（CID 字体/CMap 加载问题），用 OCR 回退
+  if (totalTextItems === 0 && typeof document !== 'undefined') {
+    const ocrPages = pagesData.map((p) => ({ page: p.page, viewport: p.viewport }))
+    const ocrItems = await ocrPdfPages(ocrPages, renderPageToCanvas, null, { mergePages: true })
+    if (ocrItems.length === 1 && pagesData.length > 1) {
+      // 合并 OCR 模式：将结果作为一个大页面处理
+      const totalHeight = pagesData.reduce((sum, p) => sum + p.height, 0)
+      const maxWidth = Math.max(...pagesData.map((p) => p.width))
+      pagesData.splice(0, pagesData.length, {
+        items: ocrItems[0],
+        width: maxWidth,
+        height: totalHeight,
+      })
+    } else {
+      for (let i = 0; i < pagesData.length; i++) {
+        pagesData[i].items = ocrItems[i] || []
+      }
+    }
   }
 
   const first = pagesData[0]

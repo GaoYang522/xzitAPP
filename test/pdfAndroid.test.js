@@ -45,3 +45,44 @@ describe('PDF解析错误处理', () => {
     vi.unstubAllGlobals()
   })
 })
+describe('CMap 本地化路径', () => {
+  test('Web环境使用本地 /cmaps/ 路径', async () => {
+    vi.resetModules()
+
+    const { getCMapUrl } = await import('../src/utils/pdfWorkerSetup.js')
+    const url = getCMapUrl()
+    expect(url).toBe('/cmaps/')
+  })
+
+  test('Web环境使用本地 /standard_fonts/ 路径', async () => {
+    vi.resetModules()
+
+    const { getStandardFontDataUrl } = await import('../src/utils/pdfWorkerSetup.js')
+    const url = getStandardFontDataUrl()
+    expect(url).toBe('/standard_fonts/')
+  })
+
+  test('Capacitor环境回退到CDN cmaps路径', async () => {
+    vi.stubGlobal('capacitor', { isNative: true })
+    vi.resetModules()
+
+    const { getCMapUrl } = await import('../src/utils/pdfWorkerSetup.js')
+    const url = getCMapUrl()
+    expect(url).toContain('cdn.jsdelivr.net')
+    expect(url).toContain('cmaps/')
+
+    vi.unstubAllGlobals()
+  })
+
+  test('Capacitor环境回退到CDN fonts路径', async () => {
+    vi.stubGlobal('capacitor', { isNative: true })
+    vi.resetModules()
+
+    const { getStandardFontDataUrl } = await import('../src/utils/pdfWorkerSetup.js')
+    const url = getStandardFontDataUrl()
+    expect(url).toContain('cdn.jsdelivr.net')
+    expect(url).toContain('standard_fonts/')
+
+    vi.unstubAllGlobals()
+  })
+})
